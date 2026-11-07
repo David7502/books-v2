@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "wrangler types && tsc -b --pretty false",
-    "test": "node --experimental-strip-types tests/search.test.ts",
+    "test": "node --experimental-strip-types tests/search.test.ts && node --experimental-strip-types tests/add-book.test.ts && node --experimental-strip-types tests/path.test.ts",
     "preview": "vite preview",
     "cf-typegen": "wrangler types"
   },

@@ -1,6 +1,6 @@
 # Bibliothèque
 
-Application de livres, construite une étape à la fois. L'interface affiche maintenant quatre livres inventés. Ils vivent dans un fichier du projet : rien n'est enregistré, et le Worker n'a pas changé. Il n'y a pas encore de base de données ni de mise en ligne.
+Application de livres, construite une étape à la fois. L'interface affiche quatre livres inventés et permet de les filtrer par titre ou par auteur. Rien n'est enregistré, et le Worker n'a pas changé. Il n'y a pas encore de base de données ni de mise en ligne.
 
 ## Modèle accepté
 
@@ -19,7 +19,9 @@ Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre aj
 | `src/client/main.tsx` | Démarre React dans l'élément `#root`. |
 | `src/client/demo-books.ts` | Les livres, et à part les lectures de démo. |
 | `src/client/BookCard.tsx` | Une carte. Elle affiche « j’ai », « je veux » et « j’ai lu » seulement quand c'est le cas. |
-| `src/client/App.tsx` | L'écran. Il parcourt le tableau et affiche une carte par livre. |
+| `src/client/search.ts` | Prépare le texte cherché et décide si un livre correspond. |
+| `src/client/App.tsx` | L'écran. Le champ de recherche filtre les cartes. |
+| `tests/search.test.ts` | Vérifie la recherche sans ouvrir le navigateur. |
 | `src/client/styles.css` | Mise en page courte : une colonne sur un téléphone, deux sur un écran large. |
 | `src/worker/index.ts` | Le Worker. Il répond uniquement à `GET /api/health`. |
 | `wrangler.jsonc` | Réglages du Worker : date de compatibilité, fichiers statiques, route `/api/*`, journaux. Aucun secret. |
@@ -54,6 +56,7 @@ npm run dev
 Puis ouvrir l'adresse affichée, en général `http://localhost:5173/`.
 
 ```bash
+npm test
 npm run typecheck
 npm run build
 npm run preview
@@ -75,13 +78,26 @@ Dans `BookCard`, `{showOwned && <li>j’ai</li>}` n'écrit la balise que si la c
 
 `App.tsx` importe le tableau de livres. `map` produit un élément de liste par livre. `key={book.id}` donne à React un nom stable. `BookCard` reçoit le livre et `completed`, un booléen calculé à part avec `hasCompletedReading`.
 
+## Rechercher dans la liste
+
+`useState("")` crée une **mémoire** pour le texte tapé. `query` est ce texte. `setQuery` le remplace. À chaque frappe, React réaffiche la page.
+
+Le champ est **contrôlé** : `value={query}` affiche cette mémoire, et `onChange` y recopie ce que tu tapes. Le libellé « Rechercher un titre ou un auteur » est visible à côté du champ.
+
+`visibleBooks` est un nouveau tableau **calculé** : `filter` garde les livres dont le titre ou l'auteur contient la recherche. `map` dessine seulement ce tableau. `filter` choisit, `map` affiche.
+
+`normalizeSearch` prépare les deux textes de la même façon : espaces en trop enlevés, minuscules, accents retirés. « Mémoires » et « memoires » deviennent le même mot. Une recherche vide, ou faite seulement d'espaces, garde les quatre livres.
+
+Les libellés « j’ai », « j’ai lu » et « je veux » ne changent pas : la recherche ne les lit pas.
+
 ## Résultat attendu
 
-- La page affiche le titre **Bibliothèque**, la mention de données inventées, et **4** cartes.
+- La page affiche le titre **Bibliothèque**, la mention de données inventées, un champ « Rechercher un titre ou un auteur », et **4** cartes quand la recherche est vide.
 - « La brume du phare » : « j’ai » et « j’ai lu ». « Mémoires d'un cartographe distrait » : « j’ai ». « L'horloge sans aiguilles » : « je veux ». « Le jardin sous la gare » : « j’ai lu ».
 - Les anciens libellés « Possédé », « Liste d'achat » et « Ni possédé, ni sur la liste d'achat » n'apparaissent plus.
 - `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`.
-- `npm run typecheck` et `npm run build` se terminent sans erreur.
+- `phare` laisse « La brume du phare », avec « j’ai » et « j’ai lu ». `memoires` trouve « Mémoires d'un cartographe distrait ». `zzzz` affiche « Aucun livre » et une phrase qui dit qu'aucun livre ne correspond.
+- `npm test`, `npm run typecheck` et `npm run build` se terminent sans erreur.
 
 ## Secrets
 
@@ -89,4 +105,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev` lancé, dans `demoReadings`, ajoute une lecture `read` pour `demo-cartographe`. « Mémoires d'un cartographe distrait » doit alors montrer « j’ai » et « j’ai lu ». Enlève cette lecture pour revenir à « j’ai » seul.
+Avec `npm run dev` lancé, cherche `phare`, puis `sablier`, puis `xyz`. Efface le champ : les quatre cartes reviennent. Essaie aussi `memoires` sans accent.

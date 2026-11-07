@@ -1,12 +1,22 @@
+import BookCard from "./BookCard.tsx";
+import { demoBooks } from "./demo-books.ts";
+
 export default function App() {
   return (
     <main>
       <h1>Bibliothèque</h1>
-      <p>
-        Cette page est l'interface. Le navigateur la reçoit comme un fichier
-        statique.
+      <p className="banner">
+        Données de démonstration. Rien n'est enregistré : ces livres n'existent
+        que dans le fichier de démo.
       </p>
-      <p>Les livres ne sont pas encore là.</p>
+      <h2>Livres de démonstration</h2>
+      <ul className="book-list">
+        {demoBooks.map((book) => (
+          <li key={book.id}>
+            <BookCard book={book} />
+          </li>
+        ))}
+      </ul>
     </main>
   );
 }

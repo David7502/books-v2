@@ -1,10 +1,10 @@
 # Bibliothèque
 
-Squelette local de l'application de livres. Cette étape montre seulement comment la page et une toute petite API vivent ensemble. Il n'y a pas encore de livres, de base de données, ni de mise en ligne.
+Application de livres, construite une étape à la fois. L'interface affiche maintenant quatre livres inventés. Ils vivent dans un fichier du projet : rien n'est enregistré, et le Worker n'a pas changé. Il n'y a pas encore de base de données ni de mise en ligne.
 
-## Modèle accepté, pas encore codé
+## Modèle accepté
 
-Deux idées restent séparées :
+Deux idées restent séparées. Seule la fiche du livre est décrite dans `demo-books.ts`, et seulement pour l'affichage. Les lectures ne sont pas encore dans le code.
 
 - un **livre** (`books`) : titre, auteur en texte simple, possession (`owned`, `wishlist` ou `none`), et plus tard une couverture ;
 - une **lecture** (`readings`) : statut (`to_read`, `reading` ou `read`), dates de début et de fin, lieu en texte libre, note de 1 à 5 ou vide.
@@ -17,8 +17,10 @@ Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre aj
 |---|---|
 | `index.html` | Page de départ. Vite la cherche à la racine, à côté de `vite.config.ts`. Elle charge le code React. |
 | `src/client/main.tsx` | Démarre React dans l'élément `#root`. |
-| `src/client/App.tsx` | Le seul écran : le titre « Bibliothèque ». |
-| `src/client/styles.css` | Mise en page courte, lisible sur un téléphone ou un grand écran. |
+| `src/client/demo-books.ts` | Le type `Book` et le tableau des quatre livres de démonstration. |
+| `src/client/BookCard.tsx` | Une carte : placeholder de couverture, titre, auteur, possession. |
+| `src/client/App.tsx` | L'écran. Il parcourt le tableau et affiche une carte par livre. |
+| `src/client/styles.css` | Mise en page courte : une colonne sur un téléphone, deux sur un écran large. |
 | `src/worker/index.ts` | Le Worker. Il répond uniquement à `GET /api/health`. |
 | `wrangler.jsonc` | Réglages du Worker : date de compatibilité, fichiers statiques, route `/api/*`, journaux. Aucun secret. |
 | `vite.config.ts` | Relie Vite, React et le plugin Cloudflare. |
@@ -59,11 +61,21 @@ npm run preview
 
 `preview` rejoue le résultat du build dans le runtime Workers, sur un autre port. Rien n'est déployé.
 
+## De la liste à l'écran
+
+`demoBooks` est un **tableau** : une liste ordonnée. Chaque case est un **objet**, un seul livre, avec ses champs côte à côte (`id`, `title`, `author`, `ownership`).
+
+Le **type** `Book` décrit cet objet. TypeScript refuse un livre sans titre, ou une possession autre que `owned`, `wishlist` ou `none`. L'auteur est un texte. `coverKey` est facultatif : aucun livre de démo ne l'a, donc chaque carte affiche « Pas de couverture » sans télécharger d'image.
+
+La possession n'est pas un statut de lecture. `owned` veut dire « je l'ai », `wishlist` « je voudrais l'acheter », `none` « ni l'un ni l'autre ». Les lectures viendront plus tard, dans d'autres données.
+
+`App.tsx` importe ce tableau. `map` le parcourt et produit un élément de liste par livre. `key={book.id}` donne à React un nom stable pour chaque carte. `BookCard` reçoit le livre dans la **prop** `book` : le composant affiche les champs, il ne va pas les chercher ailleurs.
+
 ## Résultat attendu
 
-- La page d'accueil affiche le titre **Bibliothèque** et deux phrases.
+- La page affiche le titre **Bibliothèque**, la mention **Données de démonstration**, et **4** cartes.
+- Les titres sont « La brume du phare », « L'horloge sans aiguilles », « Le jardin sous la gare » et « Mémoires d'un cartographe distrait ».
 - `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`.
-- `curl -i http://localhost:5173/api/autre` renvoie `404`.
 - `npm run typecheck` et `npm run build` se terminent sans erreur.
 
 ## Secrets
@@ -72,4 +84,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev` lancé, ouvre la page d'accueil, puis `/api/health`. Écris une phrase : quel fichier produit la page, et quel fichier produit le JSON ?
+Avec `npm run dev` lancé, ouvre `src/client/demo-books.ts`. Change le titre d'un livre, ou ajoute un objet avec un `id` que les autres n'utilisent pas. Enregistre, puis regarde la page : la carte suit le fichier. Si deux livres partagent le même `id`, React ne peut plus les distinguer.

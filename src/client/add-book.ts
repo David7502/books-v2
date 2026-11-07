@@ -43,3 +43,20 @@ export function createBook(input: NewBookInput, id: string): Book {
 export function appendBook(books: readonly Book[], book: Book): Book[] {
   return [...books, book];
 }
+
+export function replaceBook(
+  books: readonly Book[],
+  id: string,
+  input: NewBookInput,
+): Book[] {
+  return books.map((book) =>
+    book.id === id
+      ? {
+          ...book,
+          title: input.title,
+          author: input.author,
+          ownership: input.ownership,
+        }
+      : book,
+  );
+}

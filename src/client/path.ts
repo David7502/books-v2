@@ -4,3 +4,11 @@ export function normalizePath(pathname: string): string {
   }
   return pathname === "" ? "/" : pathname;
 }
+
+export function editBookId(path: string): string | null {
+  const match = /^\/livres\/([^/]+)\/modifier$/.exec(normalizePath(path));
+  if (!match?.[1]) {
+    return null;
+  }
+  return decodeURIComponent(match[1]);
+}

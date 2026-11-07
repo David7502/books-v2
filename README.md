@@ -1,13 +1,13 @@
 # Bibliothèque
 
-Squelette local de l'application de livres. Cette étape montre seulement comment la page et une toute petite API vivent ensemble. Il n'y a pas encore de livres, de base de données, ni de mise en ligne.
+Application de livres, construite une étape à la fois. L'interface affiche maintenant quatre livres inventés. Ils vivent dans un fichier du projet : rien n'est enregistré, et le Worker n'a pas changé. Il n'y a pas encore de base de données ni de mise en ligne.
 
-## Modèle accepté, pas encore codé
+## Modèle accepté
 
-Deux idées restent séparées :
+Deux idées restent séparées, dans deux tableaux du même fichier de démo. Rien n'est enregistré.
 
 - un **livre** (`books`) : titre, auteur en texte simple, possession (`owned`, `wishlist` ou `none`), et plus tard une couverture ;
-- une **lecture** (`readings`) : statut (`to_read`, `reading` ou `read`), dates de début et de fin, lieu en texte libre, note de 1 à 5 ou vide.
+- une **lecture** (`readings`) : pour l'instant, seulement `id`, `bookId` et `status` (`to_read`, `reading` ou `read`). Les dates, le lieu et la note viendront plus tard.
 
 Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre ajoutera une nouvelle lecture, pas un second livre.
 
@@ -17,8 +17,10 @@ Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre aj
 |---|---|
 | `index.html` | Page de départ. Vite la cherche à la racine, à côté de `vite.config.ts`. Elle charge le code React. |
 | `src/client/main.tsx` | Démarre React dans l'élément `#root`. |
-| `src/client/App.tsx` | Le seul écran : le titre « Bibliothèque ». |
-| `src/client/styles.css` | Mise en page courte, lisible sur un téléphone ou un grand écran. |
+| `src/client/demo-books.ts` | Les livres, et à part les lectures de démo. |
+| `src/client/BookCard.tsx` | Une carte. Elle affiche « j’ai », « je veux » et « j’ai lu » seulement quand c'est le cas. |
+| `src/client/App.tsx` | L'écran. Il parcourt le tableau et affiche une carte par livre. |
+| `src/client/styles.css` | Mise en page courte : une colonne sur un téléphone, deux sur un écran large. |
 | `src/worker/index.ts` | Le Worker. Il répond uniquement à `GET /api/health`. |
 | `wrangler.jsonc` | Réglages du Worker : date de compatibilité, fichiers statiques, route `/api/*`, journaux. Aucun secret. |
 | `vite.config.ts` | Relie Vite, React et le plugin Cloudflare. |
@@ -59,11 +61,26 @@ npm run preview
 
 `preview` rejoue le résultat du build dans le runtime Workers, sur un autre port. Rien n'est déployé.
 
+## De la liste à l'écran
+
+`demoBooks` est un **tableau** : une liste ordonnée. Chaque case est un **objet**, un seul livre, avec ses champs côte à côte (`id`, `title`, `author`, `ownership`).
+
+Le **type** `Book` décrit cet objet. TypeScript refuse un livre sans titre, ou une possession autre que `owned`, `wishlist` ou `none`. L'auteur est un texte. `coverKey` est facultatif : aucun livre de démo ne l'a, donc chaque carte affiche « Pas de couverture » sans télécharger d'image.
+
+La possession et la lecture restent deux faits. `owned` affiche « j’ai ». `wishlist` affiche « je veux ». `none` n'affiche rien : ce n'est pas « j’ai lu ». « j’ai lu » vient seulement d'une lecture dont le `status` est `read`.
+
+Ces mots se cumulent. Un livre possédé et terminé montre « j’ai » et « j’ai lu ». Une liste d'achat terminée montrerait « je veux » et « j’ai lu » : la démo n'a pas encore ce cas, mais les deux conditions sont indépendantes. Un livre emprunté et terminé (`none` + lecture `read`) montre seulement « j’ai lu ». Un livre seulement possédé montre « j’ai ». Un livre seulement souhaité montre « je veux ».
+
+Dans `BookCard`, `{showOwned && <li>j’ai</li>}` n'écrit la balise que si la condition est vraie. Chaque libellé a sa propre condition. L'aspect de ces mots est provisoire.
+
+`App.tsx` importe le tableau de livres. `map` produit un élément de liste par livre. `key={book.id}` donne à React un nom stable. `BookCard` reçoit le livre et `completed`, un booléen calculé à part avec `hasCompletedReading`.
+
 ## Résultat attendu
 
-- La page d'accueil affiche le titre **Bibliothèque** et deux phrases.
+- La page affiche le titre **Bibliothèque**, la mention de données inventées, et **4** cartes.
+- « La brume du phare » : « j’ai » et « j’ai lu ». « Mémoires d'un cartographe distrait » : « j’ai ». « L'horloge sans aiguilles » : « je veux ». « Le jardin sous la gare » : « j’ai lu ».
+- Les anciens libellés « Possédé », « Liste d'achat » et « Ni possédé, ni sur la liste d'achat » n'apparaissent plus.
 - `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`.
-- `curl -i http://localhost:5173/api/autre` renvoie `404`.
 - `npm run typecheck` et `npm run build` se terminent sans erreur.
 
 ## Secrets
@@ -72,4 +89,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev` lancé, ouvre la page d'accueil, puis `/api/health`. Écris une phrase : quel fichier produit la page, et quel fichier produit le JSON ?
+Avec `npm run dev` lancé, dans `demoReadings`, ajoute une lecture `read` pour `demo-cartographe`. « Mémoires d'un cartographe distrait » doit alors montrer « j’ai » et « j’ai lu ». Enlève cette lecture pour revenir à « j’ai » seul.

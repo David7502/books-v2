@@ -8,6 +8,14 @@ export type Book = {
   coverKey?: string;
 };
 
+export type ReadingStatus = "to_read" | "reading" | "read";
+
+export type Reading = {
+  id: string;
+  bookId: string;
+  status: ReadingStatus;
+};
+
 export const demoBooks: Book[] = [
   {
     id: "demo-brume",
@@ -34,3 +42,22 @@ export const demoBooks: Book[] = [
     ownership: "owned",
   },
 ];
+
+export const demoReadings: Reading[] = [
+  {
+    id: "demo-reading-brume",
+    bookId: "demo-brume",
+    status: "read",
+  },
+  {
+    id: "demo-reading-jardin",
+    bookId: "demo-jardin",
+    status: "read",
+  },
+];
+
+export function hasCompletedReading(bookId: string): boolean {
+  return demoReadings.some(
+    (reading) => reading.bookId === bookId && reading.status === "read",
+  );
+}

@@ -65,13 +65,30 @@ h2 {
 
 .search button,
 .add-book button,
-.show-all {
+.add-link,
+.back-link {
   padding: 0.5rem 0.75rem;
   border: 1px solid CanvasText;
   border-radius: 0.35rem;
   font: inherit;
   color: CanvasText;
   background: Canvas;
+  text-decoration: none;
+}
+
+.home-actions {
+  margin: 1rem 0 0;
+}
+
+.add-link,
+.back-link {
+  display: inline-block;
+  font-weight: 700;
+}
+
+h1:focus {
+  outline: 2px solid CanvasText;
+  outline-offset: 4px;
 }
 
 #search-count,
@@ -115,8 +132,8 @@ h2 {
   margin: 0.4rem 0 0;
 }
 
-.show-all {
-  margin-top: 0.5rem;
+.back-link {
+  margin-top: 0.25rem;
 }
 
 .book-list {

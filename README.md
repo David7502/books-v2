@@ -22,7 +22,9 @@ Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre aj
 | `src/client/search.ts` | Prépare le texte cherché et décide si un livre correspond. |
 | `src/client/add-book.ts` | Vérifie le titre et l'auteur, puis ajoute le livre sans modifier l'ancien tableau. |
 | `src/client/AddBookForm.tsx` | Le formulaire. Il appelle `onAdd` quand les champs sont valides. |
-| `src/client/App.tsx` | L'écran. La liste des livres vit dans un `useState`. |
+| `src/client/path.ts` | Nettoie l'adresse (`/ajouter/` devient `/ajouter`). |
+| `src/client/use-path.ts` | Lit l'adresse et la change sans recharger la page. |
+| `src/client/App.tsx` | Garde les livres en mémoire et choisit l'écran selon l'adresse. |
 | `tests/search.test.ts` | Vérifie la recherche sans ouvrir le navigateur. |
 | `tests/add-book.test.ts` | Vérifie l'ajout : texte vide, possession, et livres de démo inchangés. |
 | `src/client/styles.css` | Mise en page courte : une colonne sur un téléphone, deux sur un écran large. |
@@ -93,9 +95,19 @@ Le champ est **contrôlé** : `value={query}` affiche cette mémoire, et `onChan
 
 Les libellés « j’ai », « j’ai lu » et « je veux » ne changent pas : la recherche ne les lit pas.
 
+## Deux adresses
+
+L'accueil est `/`. Le formulaire est `/ajouter`. Ce ne sont pas deux rechargements : `App` reste monté, donc le `useState` des livres survit au changement d'écran.
+
+Le Worker sert déjà `index.html` pour une adresse qui n'est pas un fichier. C'est le mode `single-page-application`. React lit ensuite `window.location.pathname`. Un clic simple sur **Ajouter un livre** appelle `history.pushState` : l'adresse change, la page ne se recharge pas. Le bouton Précédent du navigateur envoie `popstate`, et l'écran suit. Ouvrir le lien dans un nouvel onglet charge vraiment `/ajouter`, comme un rechargement : la mémoire est vide, il reste les quatre livres inventés.
+
+`/api/health` et les autres adresses `/api/...` passent d'abord par le Worker. Une adresse d'API inconnue répond `404`, pas la page HTML.
+
+On n'ajoute pas de bibliothèque de routes : deux écrans et une fonction `navigate` suffisent.
+
 ## Ajouter un livre
 
-Le formulaire est un enfant. Sa prop `onAdd` est une fonction fournie par `App`. Quand l'ajout est accepté, l'enfant appelle `onAdd` avec le titre, l'auteur et la possession. Il ne fabrique pas l'`id`.
+Le bouton **Ajouter un livre** de l'accueil mène à `/ajouter`. Le formulaire est un enfant de cet écran. Sa prop `onAdd` est une fonction fournie par `App`. Quand l'ajout est accepté, l'enfant appelle `onAdd` avec le titre, l'auteur et la possession. Il ne fabrique pas l'`id`. Ensuite `App` revient à `/`.
 
 `onSubmit` reçoit l'événement du formulaire. `preventDefault()` empêche le navigateur de recharger la page. La touche Entrée dans un champ envoie ce même événement.
 
@@ -103,11 +115,11 @@ Les champs sont contrôlés : `value` affiche le `useState`, `onChange` le met �
 
 `setBooks((previous) => appendBook(previous, book))` construit un **nouveau** tableau `[...previous, book]`. On n'appelle pas `push` : `push` modifierait le tableau déjà en mémoire, et React peut ne pas voir le changement. `crypto.randomUUID()` donne un `id` différent à chaque ajout. Les quatre livres de démo gardent les leurs.
 
-Si la recherche en cours cache le nouveau livre, un message le dit et le bouton **Afficher tous les livres** vide la recherche. L'ajout n'est pas envoyé et n'est pas stocké : recharger la page revient aux quatre livres inventés.
+Au retour, la recherche est vidée s'il y en avait une, pour que la nouvelle carte soit visible. Le message le dit. **Annuler et revenir à la bibliothèque** revient à `/` sans ajouter. L'ajout n'est pas envoyé : recharger la page revient aux quatre livres inventés.
 
 ## Résultat attendu
 
-- La page affiche le titre **Bibliothèque**, la distinction entre les livres inventés du départ et un ajout temporaire, la recherche, le formulaire, et **4** cartes quand la recherche est vide.
+- L'accueil `/` affiche le titre **Bibliothèque**, le bouton **Ajouter un livre**, la recherche, et **4** cartes quand la recherche est vide. Le formulaire est sur `/ajouter`.
 - « La brume du phare » : « j’ai » et « j’ai lu ». « Mémoires d'un cartographe distrait » : « j’ai ». « L'horloge sans aiguilles » : « je veux ». « Le jardin sous la gare » : « j’ai lu ».
 - Les anciens libellés « Possédé », « Liste d'achat » et « Ni possédé, ni sur la liste d'achat » n'apparaissent plus.
 - `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`.
@@ -121,4 +133,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev`, ajoute un titre imaginaire, par exemple « Le nuage en papier ». Cherche `nuage` : la carte est là, sans « j’ai lu ». Recharge la page : ce livre a disparu, les quatre livres inventés sont revenus.
+Avec `npm run dev`, clique **Ajouter un livre** : l'adresse devient `/ajouter`. Ajoute « Le nuage en papier », puis annule un autre essai. Reviens en arrière avec le navigateur. Recharge : le livre ajouté a disparu.

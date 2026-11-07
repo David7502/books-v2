@@ -38,12 +38,10 @@ export default function AddBookForm({ onAdd }: AddBookFormProps) {
     setAuthor("");
     setOwnership("none");
     setErrors([]);
-    titleRef.current?.focus();
   }
 
   return (
     <form className="add-book" onSubmit={handleSubmit}>
-      <h2>Ajouter un livre</h2>
       <p className="add-note">
         Cet ajout reste dans la mémoire de la page. Un rechargement l'efface.
         Rien n'est envoyé.

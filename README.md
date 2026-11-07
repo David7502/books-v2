@@ -1,6 +1,6 @@
 # Bibliothèque
 
-Application de livres, construite une étape à la fois. L'interface affiche quatre livres inventés et permet de les filtrer par titre ou par auteur. Rien n'est enregistré, et le Worker n'a pas changé. Il n'y a pas encore de base de données ni de mise en ligne.
+Application de livres, construite une étape à la fois. L'interface affiche quatre livres inventés, permet de les filtrer, et d'en ajouter un dans la mémoire de la page. Un rechargement efface cet ajout. Le Worker n'a pas changé. Il n'y a pas encore de base de données ni de mise en ligne.
 
 ## Modèle accepté
 
@@ -20,8 +20,11 @@ Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre aj
 | `src/client/demo-books.ts` | Les livres, et à part les lectures de démo. |
 | `src/client/BookCard.tsx` | Une carte. Elle affiche « j’ai », « je veux » et « j’ai lu » seulement quand c'est le cas. |
 | `src/client/search.ts` | Prépare le texte cherché et décide si un livre correspond. |
-| `src/client/App.tsx` | L'écran. Le champ de recherche filtre les cartes. |
+| `src/client/add-book.ts` | Vérifie le titre et l'auteur, puis ajoute le livre sans modifier l'ancien tableau. |
+| `src/client/AddBookForm.tsx` | Le formulaire. Il appelle `onAdd` quand les champs sont valides. |
+| `src/client/App.tsx` | L'écran. La liste des livres vit dans un `useState`. |
 | `tests/search.test.ts` | Vérifie la recherche sans ouvrir le navigateur. |
+| `tests/add-book.test.ts` | Vérifie l'ajout : texte vide, possession, et livres de démo inchangés. |
 | `src/client/styles.css` | Mise en page courte : une colonne sur un téléphone, deux sur un écran large. |
 | `src/worker/index.ts` | Le Worker. Il répond uniquement à `GET /api/health`. |
 | `wrangler.jsonc` | Réglages du Worker : date de compatibilité, fichiers statiques, route `/api/*`, journaux. Aucun secret. |
@@ -90,13 +93,26 @@ Le champ est **contrôlé** : `value={query}` affiche cette mémoire, et `onChan
 
 Les libellés « j’ai », « j’ai lu » et « je veux » ne changent pas : la recherche ne les lit pas.
 
+## Ajouter un livre
+
+Le formulaire est un enfant. Sa prop `onAdd` est une fonction fournie par `App`. Quand l'ajout est accepté, l'enfant appelle `onAdd` avec le titre, l'auteur et la possession. Il ne fabrique pas l'`id`.
+
+`onSubmit` reçoit l'événement du formulaire. `preventDefault()` empêche le navigateur de recharger la page. La touche Entrée dans un champ envoie ce même événement.
+
+Les champs sont contrôlés : `value` affiche le `useState`, `onChange` le met à jour. `validateNewBook` enlève les espaces autour du titre et de l'auteur. Un texte vide, ou fait seulement d'espaces, est refusé et le formulaire n'est pas vidé. « j’ai » vaut `owned`, « je veux » vaut `wishlist`, « Ni l’un ni l’autre » vaut `none`. Aucun de ces choix ne crée une lecture : « j’ai lu » ne s'affiche pas pour un livre ajouté.
+
+`setBooks((previous) => appendBook(previous, book))` construit un **nouveau** tableau `[...previous, book]`. On n'appelle pas `push` : `push` modifierait le tableau déjà en mémoire, et React peut ne pas voir le changement. `crypto.randomUUID()` donne un `id` différent à chaque ajout. Les quatre livres de démo gardent les leurs.
+
+Si la recherche en cours cache le nouveau livre, un message le dit et le bouton **Afficher tous les livres** vide la recherche. L'ajout n'est pas envoyé et n'est pas stocké : recharger la page revient aux quatre livres inventés.
+
 ## Résultat attendu
 
-- La page affiche le titre **Bibliothèque**, la mention de données inventées, un champ « Rechercher un titre ou un auteur », et **4** cartes quand la recherche est vide.
+- La page affiche le titre **Bibliothèque**, la distinction entre les livres inventés du départ et un ajout temporaire, la recherche, le formulaire, et **4** cartes quand la recherche est vide.
 - « La brume du phare » : « j’ai » et « j’ai lu ». « Mémoires d'un cartographe distrait » : « j’ai ». « L'horloge sans aiguilles » : « je veux ». « Le jardin sous la gare » : « j’ai lu ».
 - Les anciens libellés « Possédé », « Liste d'achat » et « Ni possédé, ni sur la liste d'achat » n'apparaissent plus.
 - `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`.
 - `phare` laisse « La brume du phare », avec « j’ai » et « j’ai lu ». `memoires` trouve « Mémoires d'un cartographe distrait ». `zzzz` affiche « Aucun livre » et une phrase qui dit qu'aucun livre ne correspond.
+- Un titre ou un auteur vide est refusé. Un livre ajouté avec « j’ai » n'affiche pas « j’ai lu ». Après rechargement, il n'est plus là.
 - `npm test`, `npm run typecheck` et `npm run build` se terminent sans erreur.
 
 ## Secrets
@@ -105,4 +121,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev` lancé, cherche `phare`, puis `sablier`, puis `xyz`. Efface le champ : les quatre cartes reviennent. Essaie aussi `memoires` sans accent.
+Avec `npm run dev`, ajoute un titre imaginaire, par exemple « Le nuage en papier ». Cherche `nuage` : la carte est là, sans « j’ai lu ». Recharge la page : ce livre a disparu, les quatre livres inventés sont revenus.

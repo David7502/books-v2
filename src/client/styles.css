@@ -50,7 +50,8 @@ h2 {
   gap: 0.5rem;
 }
 
-.search input {
+.search input,
+.add-book input[type="text"] {
   flex: 1 1 12rem;
   min-width: 0;
   width: 100%;
@@ -62,7 +63,9 @@ h2 {
   background: Canvas;
 }
 
-.search button {
+.search button,
+.add-book button,
+.show-all {
   padding: 0.5rem 0.75rem;
   border: 1px solid CanvasText;
   border-radius: 0.35rem;
@@ -72,8 +75,48 @@ h2 {
 }
 
 #search-count,
-#search-empty {
+#search-empty,
+#add-status,
+.add-note,
+.add-error {
   margin: 0.75rem 0 0;
+}
+
+.add-book {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.add-book h2,
+.add-note,
+.add-error {
+  margin: 0;
+}
+
+.add-book label,
+.add-book legend {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.add-book fieldset {
+  margin: 0;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid CanvasText;
+  border-radius: 0.35rem;
+}
+
+.add-book fieldset label {
+  display: flex;
+  gap: 0.45rem;
+  align-items: baseline;
+  margin: 0.4rem 0 0;
+}
+
+.show-all {
+  margin-top: 0.5rem;
 }
 
 .book-list {

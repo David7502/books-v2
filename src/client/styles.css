@@ -62,13 +62,32 @@ h2 {
   background: Canvas;
 }
 
-.search button {
+.search button,
+.view-bar button {
   padding: 0.5rem 0.75rem;
   border: 1px solid CanvasText;
   border-radius: 0.35rem;
   font: inherit;
   color: CanvasText;
   background: Canvas;
+}
+
+.view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.75rem;
+}
+
+.view-bar div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.view-bar button[aria-pressed="true"] {
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px CanvasText;
 }
 
 #search-count,
@@ -87,6 +106,26 @@ h2 {
 
 .book-list > li {
   min-width: 0;
+}
+
+.book-list-carousel {
+  display: flex;
+  max-width: 100%;
+  min-width: 0;
+  padding-bottom: 0.75rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+}
+
+.book-list-carousel > li {
+  flex: 0 0 85%;
+  scroll-snap-align: start;
+}
+
+.book-list-carousel > li:only-child {
+  flex-basis: 100%;
 }
 
 .book-card {
@@ -135,5 +174,19 @@ h2 {
 @media (min-width: 40rem) {
   .book-list {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .book-list-carousel > li {
+    flex-basis: 70%;
+  }
+
+  .book-list-carousel > li:only-child {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-list-carousel {
+    scroll-behavior: auto;
   }
 }

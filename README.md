@@ -1,6 +1,6 @@
 # Bibliothèque
 
-Application de livres, construite une étape à la fois. L'interface affiche quatre livres inventés et permet de les filtrer par titre ou par auteur. Rien n'est enregistré, et le Worker n'a pas changé. Il n'y a pas encore de base de données ni de mise en ligne.
+Application de livres, construite une étape à la fois. L'interface affiche quatre livres inventés, les filtre par titre ou par auteur, et peut les montrer en grille ou en carrousel. Rien n'est enregistré, et le Worker n'a pas changé. Il n'y a pas encore de base de données ni de mise en ligne.
 
 ## Modèle accepté
 
@@ -20,9 +20,9 @@ Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre aj
 | `src/client/demo-books.ts` | Les livres, et à part les lectures de démo. |
 | `src/client/BookCard.tsx` | Une carte. Elle affiche « j’ai », « je veux » et « j’ai lu » seulement quand c'est le cas. |
 | `src/client/search.ts` | Prépare le texte cherché et décide si un livre correspond. |
-| `src/client/App.tsx` | L'écran. Le champ de recherche filtre les cartes. |
+| `src/client/App.tsx` | L'écran : recherche, mode grille ou carrousel, cartes. |
 | `tests/search.test.ts` | Vérifie la recherche sans ouvrir le navigateur. |
-| `src/client/styles.css` | Mise en page courte : une colonne sur un téléphone, deux sur un écran large. |
+| `src/client/styles.css` | Grille, ou liste horizontale qui défile dans son cadre. |
 | `src/worker/index.ts` | Le Worker. Il répond uniquement à `GET /api/health`. |
 | `wrangler.jsonc` | Réglages du Worker : date de compatibilité, fichiers statiques, route `/api/*`, journaux. Aucun secret. |
 | `vite.config.ts` | Relie Vite, React et le plugin Cloudflare. |
@@ -90,9 +90,17 @@ Le champ est **contrôlé** : `value={query}` affiche cette mémoire, et `onChan
 
 Les libellés « j’ai », « j’ai lu » et « je veux » ne changent pas : la recherche ne les lit pas.
 
+## Grille ou carrousel
+
+Un second `useState` garde le mode : `"grid"` ou `"carousel"`. Les boutons **Grille** et **Carrousel** appellent `setViewMode`. `aria-pressed` indique le bouton choisi. Ce choix est indépendant du texte de recherche : les mêmes livres filtrés sont dessinés dans les deux modes.
+
+La classe du `ul` change. En grille, `display: grid`. En carrousel, `display: flex`, `overflow-x: auto` et `scroll-snap-type: x mandatory`. Le défilement horizontal reste dans cette liste. La page, elle, ne s'élargit pas. Au doigt ou au trackpad, on fait défiler la liste.
+
+`scrollerRef` pointe vers ce `ul`. **Précédent** et **Suivant** s'en servent pour appeler `scrollBy` d'une carte. Ces boutons apparaissent quand le carrousel a au moins deux livres. Si le système demande moins d'animation (`prefers-reduced-motion`), le déplacement est instantané.
+
 ## Résultat attendu
 
-- La page affiche le titre **Bibliothèque**, la mention de données inventées, un champ « Rechercher un titre ou un auteur », et **4** cartes quand la recherche est vide.
+- La page affiche le titre **Bibliothèque**, la mention de données inventées, la recherche, les boutons **Grille** et **Carrousel**, et **4** cartes en grille quand la recherche est vide.
 - « La brume du phare » : « j’ai » et « j’ai lu ». « Mémoires d'un cartographe distrait » : « j’ai ». « L'horloge sans aiguilles » : « je veux ». « Le jardin sous la gare » : « j’ai lu ».
 - Les anciens libellés « Possédé », « Liste d'achat » et « Ni possédé, ni sur la liste d'achat » n'apparaissent plus.
 - `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`.
@@ -105,4 +113,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev` lancé, cherche `phare`, puis `sablier`, puis `xyz`. Efface le champ : les quatre cartes reviennent. Essaie aussi `memoires` sans accent.
+Avec `npm run dev`, passe en **Carrousel**. Avance avec **Suivant** jusqu'au dernier livre. Cherche `phare` : une seule carte, avec « j’ai » et « j’ai lu ». Efface, puis reviens en **Grille** : les quatre cartes sont de nouveau en grille.

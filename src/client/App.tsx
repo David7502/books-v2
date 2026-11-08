@@ -3,14 +3,15 @@ import { type NewBookInput } from "./add-book.ts";
 import { ApiError, createBook, fetchBooks, updateBook, type LibraryBook } from "./api.ts";
 import BookCard from "./BookCard.tsx";
 import BookForm from "./BookForm.tsx";
-import { editBookId } from "./path.ts";
+import { editBookId, readingBookId } from "./path.ts";
+import ReadingsPage from "./ReadingsPage.tsx";
 import { bookMatchesQuery, formatResultCount } from "./search.ts";
 import { usePath } from "./use-path.ts";
 
 type Navigate = (to: string) => void;
 
 type Notice = {
-  kind: "added" | "updated";
+  kind: "added" | "updated" | "reading";
   id: string;
   searchCleared: boolean;
 };
@@ -68,6 +69,9 @@ function pageTitle(
   if (path === "/ajouter") {
     return "Ajouter un livre — Bibliothèque";
   }
+  if (readingBookId(path)) {
+    return "Lecture — Bibliothèque";
+  }
   if (editingId) {
     return editing
       ? "Modifier un livre — Bibliothèque"
@@ -86,6 +90,7 @@ export default function App() {
   const loadGeneration = useRef(0);
   const visibleBooks = books.filter((book) => bookMatchesQuery(book, query));
   const empty = visibleBooks.length === 0;
+  const readingId = readingBookId(path);
   const editingId = editBookId(path);
   const editing = editingId
     ? (books.find((book) => book.id === editingId) ?? null)
@@ -172,6 +177,30 @@ export default function App() {
     );
   }
 
+  if (readingId) {
+    return (
+      <ReadingsPage
+        bookId={readingId}
+        navigate={navigate}
+        onSaved={async (savedBook) => {
+          loadGeneration.current += 1;
+          setBooks((previous) => {
+            const exists = previous.some((item) => item.id === savedBook.id);
+            if (!exists) {
+              return [...previous, savedBook];
+            }
+            return previous.map((item) =>
+              item.id === savedBook.id ? savedBook : item,
+            );
+          });
+          setLoading(false);
+          setLoadError(null);
+          remember("reading", savedBook.id);
+        }}
+      />
+    );
+  }
+
   if (editingId) {
     if (loading) {
       return (
@@ -203,8 +232,7 @@ export default function App() {
             Livre introuvable
           </h1>
           <p>
-            Ce livre n'est pas dans la liste de cette visite. Un rechargement
-            retire les livres ajoutés ici.
+            Ce livre n'est pas dans la base locale.
           </p>
           <PageLink href="/" className="back-link" navigate={navigate}>
             Retour à la bibliothèque
@@ -301,7 +329,9 @@ export default function App() {
         <p id="add-status" role="status">
           {notice.kind === "added"
             ? `« ${noticed.title} » est ajouté pour cette visite. Il n'a pas encore de lecture.`
-            : `Modification enregistrée : « ${noticed.title} ».`}
+            : notice.kind === "reading"
+              ? `Lecture enregistrée pour « ${noticed.title} ».`
+              : `Modification enregistrée : « ${noticed.title} ».`}
           {notice.searchCleared
             ? " La recherche a été effacée pour l'afficher."
             : ""}
@@ -333,13 +363,22 @@ export default function App() {
           {visibleBooks.map((book) => (
             <li key={book.id}>
               <BookCard book={book} completed={book.completed}>
-                <PageLink
-                  href={`/livres/${encodeURIComponent(book.id)}/modifier`}
-                  className="edit-link"
-                  navigate={navigate}
-                >
-                  Modifier
-                </PageLink>
+                <span className="card-actions">
+                  <PageLink
+                    href={`/livres/${encodeURIComponent(book.id)}/modifier`}
+                    className="edit-link"
+                    navigate={navigate}
+                  >
+                    Modifier
+                  </PageLink>
+                  <PageLink
+                    href={`/livres/${encodeURIComponent(book.id)}/lecture`}
+                    className="edit-link"
+                    navigate={navigate}
+                  >
+                    Lecture
+                  </PageLink>
+                </span>
               </BookCard>
             </li>
           ))}

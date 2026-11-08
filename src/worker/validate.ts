@@ -31,7 +31,7 @@ export function validateBookInput(
     return { ok: false, error: "Le titre et l'auteur sont limités à 200 caractères." };
   }
   if (!OWNERSHIPS.includes(body.ownership as Ownership)) {
-    return { ok: false, error: "Choisis j’ai, je veux, ou ni l’un ni l’autre." };
+    return { ok: false, error: "Le lien avec le livre n'est pas reconnu." };
   }
 
   return {
@@ -42,4 +42,21 @@ export function validateBookInput(
       ownership: body.ownership as Ownership,
     },
   };
+}
+
+export function validateCreateBook(
+  value: unknown,
+): { ok: true; book: BookInput; read: boolean } | { ok: false; error: string } {
+  const parsed = validateBookInput(value);
+  if (!parsed.ok) {
+    return parsed;
+  }
+  const read = (value as Record<string, unknown>).read;
+  if (read === undefined || read === false) {
+    return { ok: true, book: parsed.book, read: false };
+  }
+  if (read === true) {
+    return { ok: true, book: parsed.book, read: true };
+  }
+  return { ok: false, error: "« J’ai lu » doit être oui ou non." };
 }

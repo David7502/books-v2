@@ -4,6 +4,7 @@ export type NewBookInput = {
   title: string;
   author: string;
   ownership: Ownership;
+  read?: boolean;
 };
 
 export type NewBookField = "title" | "author";
@@ -27,7 +28,7 @@ export function validateNewBook(draft: NewBookInput):
 
   return {
     ok: true,
-    book: { title, author, ownership: draft.ownership },
+    book: { title, author, ownership: draft.ownership, read: draft.read === true },
   };
 }
 

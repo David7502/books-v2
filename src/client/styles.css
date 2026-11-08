@@ -44,6 +44,19 @@ h2 {
   margin-top: 1rem;
 }
 
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.filters button[aria-pressed="true"] {
+  font-weight: 700;
+  outline: 2px solid CanvasText;
+  outline-offset: 2px;
+}
+
 .search-row {
   display: flex;
   flex-wrap: wrap;
@@ -65,6 +78,7 @@ h2 {
 }
 
 .search button,
+.filters button,
 .add-book button,
 .add-link,
 .back-link,

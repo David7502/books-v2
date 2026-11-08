@@ -5,7 +5,15 @@ import BookCard from "./BookCard.tsx";
 import BookForm from "./BookForm.tsx";
 import { editBookId, readingBookId } from "./path.ts";
 import ReadingsPage from "./ReadingsPage.tsx";
-import { bookMatchesQuery, formatResultCount } from "./search.ts";
+import {
+  emptyLibraryMessage,
+  libraryCounts,
+  libraryFilterLabel,
+  LIBRARY_FILTERS,
+  type LibraryFilter,
+  visibleLibraryBooks,
+} from "./library-filter.ts";
+import { formatResultCount } from "./search.ts";
 import { usePath } from "./use-path.ts";
 
 type Navigate = (to: string) => void;
@@ -13,7 +21,7 @@ type Navigate = (to: string) => void;
 type Notice = {
   kind: "added" | "updated" | "reading";
   id: string;
-  searchCleared: boolean;
+  viewReset: "search" | "filter" | "both" | null;
 };
 
 const emptyBook: NewBookInput = {
@@ -83,12 +91,14 @@ function pageTitle(
 export default function App() {
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<LibraryFilter>("all");
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [path, navigate] = usePath();
   const loadGeneration = useRef(0);
-  const visibleBooks = books.filter((book) => bookMatchesQuery(book, query));
+  const visibleBooks = visibleLibraryBooks(books, query, filter);
+  const counts = libraryCounts(books);
   const empty = visibleBooks.length === 0;
   const readingId = readingBookId(path);
   const editingId = editBookId(path);
@@ -131,12 +141,15 @@ export default function App() {
   }, []);
 
   function remember(kind: Notice["kind"], id: string) {
+    const hadSearch = query.trim() !== "";
+    const hadFilter = filter !== "all";
     setNotice({
       kind,
       id,
-      searchCleared: query.trim() !== "",
+      viewReset: hadSearch && hadFilter ? "both" : hadSearch ? "search" : hadFilter ? "filter" : null,
     });
     setQuery("");
+    setFilter("all");
     navigate("/");
   }
 
@@ -171,6 +184,7 @@ export default function App() {
           initial={emptyBook}
           submitLabel="Ajouter"
           note={memoryNote}
+          showRead
           onSubmitBook={addBook}
         />
       </main>
@@ -295,6 +309,22 @@ export default function App() {
           Ajouter un livre
         </PageLink>
       </p>
+      {!loading && !loadError ? (
+        <div className="filters" role="group" aria-label="Filtres de la bibliothèque">
+          {LIBRARY_FILTERS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={filter === value}
+              onClick={() => {
+                setFilter(value);
+              }}
+            >
+              {libraryFilterLabel(value)}, {counts[value]}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <form
         className="search"
         role="search"
@@ -328,13 +358,19 @@ export default function App() {
       {noticed && notice && (
         <p id="add-status" role="status">
           {notice.kind === "added"
-            ? `« ${noticed.title} » est ajouté pour cette visite. Il n'a pas encore de lecture.`
+            ? noticed.completed
+              ? `« ${noticed.title} » est ajouté, avec une fiche Terminé.`
+              : `« ${noticed.title} » est ajouté. Il n'a pas encore de lecture.`
             : notice.kind === "reading"
               ? `Lecture enregistrée pour « ${noticed.title} ».`
               : `Modification enregistrée : « ${noticed.title} ».`}
-          {notice.searchCleared
-            ? " La recherche a été effacée pour l'afficher."
-            : ""}
+          {notice.viewReset === "both"
+            ? " La recherche et le filtre ont été remis sur Tous pour l'afficher."
+            : notice.viewReset === "search"
+              ? " La recherche a été effacée pour l'afficher."
+              : notice.viewReset === "filter"
+                ? " Le filtre a été remis sur Tous pour l'afficher."
+                : ""}
         </p>
       )}
       <h2>Livres</h2>
@@ -356,7 +392,19 @@ export default function App() {
         <p>Aucun livre pour l'instant. Utilise Ajouter un livre.</p>
       ) : null}
       {!loading && !loadError && books.length > 0 && empty ? (
-        <p id="search-empty">Aucun livre ne correspond à cette recherche.</p>
+        <p id="search-empty">
+          {emptyLibraryMessage(filter, query)}{" "}
+          <button
+            type="button"
+            className="show-all"
+            onClick={() => {
+              setQuery("");
+              setFilter("all");
+            }}
+          >
+            Revenir à Tous
+          </button>
+        </p>
       ) : null}
       {!loading && !loadError && !empty ? (
         <ul className="book-list">

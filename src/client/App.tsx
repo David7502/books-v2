@@ -38,9 +38,6 @@ const emptyBook: NewBookInput = {
   ownership: "none",
 };
 
-const memoryNote =
-  "Ceci est enregistré dans la base locale. Un rechargement le garde. Rien n'est envoyé chez Cloudflare.";
-
 function PageLink({
   href,
   className,
@@ -199,7 +196,6 @@ export default function App() {
         <BookForm
           initial={emptyBook}
           submitLabel="Ajouter"
-          note={memoryNote}
           showRead
           onSubmitBook={addBook}
         />
@@ -262,7 +258,7 @@ export default function App() {
             Livre introuvable
           </h1>
           <p>
-            Ce livre n'est pas dans la base locale.
+            Ce livre n'est pas dans la bibliothèque.
           </p>
           <PageLink href="/" className="back-link" navigate={navigate}>
             Retour à la bibliothèque
@@ -287,7 +283,6 @@ export default function App() {
             ownership: editing.ownership,
           }}
           submitLabel="Enregistrer"
-          note={memoryNote}
           currentCoverUrl={
             editing.coverKey
               ? `/api/books/${encodeURIComponent(editing.id)}/cover?v=${encodeURIComponent(editing.coverKey)}`
@@ -318,13 +313,6 @@ export default function App() {
       <h1 id="page-title" tabIndex={-1}>
         Bibliothèque
       </h1>
-      <p className="banner">
-        Ces livres sont enregistrés dans la base locale de cet ordinateur. Ils
-        restent après un rechargement et après un redémarrage du serveur de
-        développement. Ils ne sont pas copiés sur un autre ordinateur, ni chez
-        Cloudflare. Ne déploie pas cette application tant que l'accès n'est pas
-        protégé. Les libellés et l'aspect sont provisoires.
-      </p>
       <p className="home-actions">
         <PageLink href="/ajouter" className="add-link" navigate={navigate}>
           Ajouter un livre

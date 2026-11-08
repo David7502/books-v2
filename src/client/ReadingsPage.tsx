@@ -145,7 +145,7 @@ export default function ReadingsPage({
         <h1 id="page-title" tabIndex={-1}>
           Livre introuvable
         </h1>
-        <p>Ce livre n'est pas dans la base locale.</p>
+        <p>Ce livre n'est pas dans la bibliothèque.</p>
         <PageLink href="/" className="back-link" navigate={navigate}>
           Retour à la bibliothèque
         </PageLink>

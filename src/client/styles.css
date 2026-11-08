@@ -1,7 +1,26 @@
+/*
+  Les variables en haut nomment les couleurs et les espaces.
+  On les change ici, et toute la page suit.
+  .book-list est une grille : une colonne sur un petit écran,
+  deux puis trois quand la fenêtre s'élargit.
+*/
+
 :root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+  --paper: #f4efe4;
+  --paper-raised: #fbf7f0;
+  --ink: #1c2a24;
+  --ink-soft: #3f4c45;
+  --forest: #1e4a38;
+  --line: #d8cebf;
+  --danger: #7f2d24;
+  --space: 1.25rem;
+  --serif: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+  --sans: system-ui, sans-serif;
+  color-scheme: light;
+  font-family: var(--sans);
   line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
 }
 
 *,
@@ -12,49 +31,77 @@
 
 body {
   margin: 0;
+  color: var(--ink);
+  background: var(--paper);
 }
 
 main {
-  max-width: 48rem;
+  max-width: 72rem;
   margin: 0 auto;
-  padding: 2rem 1.25rem;
+  padding: 1.75rem 1.15rem 3rem;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 h1 {
-  margin: 0 0 0.75rem;
-  font-size: clamp(2rem, 6vw, 3rem);
-  line-height: 1.15;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 1rem;
+  font-size: clamp(2.35rem, 7vw, 3.5rem);
+  line-height: 1.05;
 }
 
 h2 {
-  margin: 1.5rem 0 0.75rem;
-  font-size: 1.25rem;
+  margin: 2rem 0 0.5rem;
+  font-size: 1.55rem;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 .banner {
+  max-width: 42rem;
   margin: 0;
-  padding: 0.75rem 1rem;
-  border: 1px solid CanvasText;
-  border-radius: 0.5rem;
+  padding: 0.9rem 1rem 0.9rem 1.05rem;
+  border: 0;
+  border-left: 3px solid var(--forest);
+  border-radius: 0;
+  color: var(--ink-soft);
+  background: transparent;
 }
 
-.search {
-  display: grid;
-  gap: 0.4rem;
-  margin-top: 1rem;
+.home-actions {
+  margin: 1.5rem 0 0;
 }
 
 .filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: 0.25rem 0.35rem;
+  margin-top: 1.75rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--line);
 }
 
-.filters button[aria-pressed="true"] {
-  font-weight: 700;
-  outline: 2px solid CanvasText;
-  outline-offset: 2px;
+.search {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1.25rem;
+}
+
+.search label,
+.add-book label,
+.add-book legend {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .search-row {
@@ -70,12 +117,20 @@ h2 {
   flex: 1 1 12rem;
   min-width: 0;
   width: 100%;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid CanvasText;
-  border-radius: 0.35rem;
+  max-width: 100%;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
   font: inherit;
-  color: inherit;
-  background: Canvas;
+  color: var(--ink);
+  background: var(--paper-raised);
+}
+
+.add-book input[type="checkbox"],
+.add-book input[type="radio"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--forest);
 }
 
 .search button,
@@ -83,41 +138,77 @@ h2 {
 .add-book button,
 .add-link,
 .back-link,
-.show-all {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid CanvasText;
-  border-radius: 0.35rem;
+.show-all,
+.edit-link {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
   font: inherit;
-  color: CanvasText;
-  background: Canvas;
+  line-height: 1.2;
   text-decoration: none;
 }
 
-.home-actions {
-  margin: 1rem 0 0;
+.filters button {
+  border-bottom: 3px solid transparent;
+  border-radius: 0.4rem 0.4rem 0 0;
+  color: var(--ink-soft);
+  background: transparent;
+}
+
+.filters button[aria-pressed="true"] {
+  border-bottom-color: var(--forest);
+  color: var(--ink);
+  font-weight: 700;
+  background: var(--paper-raised);
 }
 
 .add-link,
-.back-link,
-.edit-link {
+.add-book button[type="submit"] {
   display: inline-block;
-  font-weight: 700;
+  border-color: var(--forest);
+  color: var(--paper);
+  font-weight: 600;
+  background: var(--forest);
+}
+
+.back-link,
+.show-all,
+.search button {
+  display: inline-block;
+  border-color: var(--line);
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--paper-raised);
 }
 
 .edit-link {
-  margin-top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0;
+  padding-inline: 0.15rem;
+  border: 0;
+  border-bottom: 1px solid var(--forest);
+  border-radius: 0;
+  color: var(--forest);
+  font-weight: 600;
+  background: transparent;
 }
 
 .card-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.35rem 1rem;
+  margin-top: auto;
+  padding-top: 1.1rem;
 }
 
-
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
 h1:focus {
-  outline: 2px solid CanvasText;
-  outline-offset: 4px;
+  outline: 2px solid var(--forest);
+  outline-offset: 3px;
 }
 
 #search-count,
@@ -125,12 +216,29 @@ h1:focus {
 #add-status,
 .add-note,
 .add-error {
-  margin: 0.75rem 0 0;
+  margin: 0.85rem 0 0;
+}
+
+#search-count,
+.add-note,
+.banner {
+  color: var(--ink-soft);
+}
+
+#add-status {
+  max-width: 42rem;
+  padding: 0.75rem 0 0.75rem 0.9rem;
+  border-left: 3px solid var(--forest);
+}
+
+#search-empty {
+  max-width: 42rem;
 }
 
 .add-book {
   display: grid;
-  gap: 0.75rem;
+  gap: 1.1rem;
+  max-width: 38rem;
   margin-top: 1.5rem;
 }
 
@@ -140,36 +248,45 @@ h1:focus {
   margin: 0;
 }
 
+.add-error {
+  padding-left: 0.7rem;
+  border-left: 3px solid var(--danger);
+  color: var(--danger);
+}
+
 .add-book label,
 .add-book legend {
   display: block;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .add-book fieldset {
   margin: 0;
   min-width: 0;
-  padding: 0.75rem;
-  border: 1px solid CanvasText;
-  border-radius: 0.35rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--paper-raised);
 }
 
 .add-book fieldset label {
   display: flex;
-  gap: 0.45rem;
-  align-items: baseline;
-  margin: 0.4rem 0 0;
+  gap: 0.6rem;
+  align-items: center;
+  min-height: 2.5rem;
+  margin: 0.2rem 0 0;
+  font-weight: 500;
 }
 
 .back-link {
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
 }
 
 .book-list {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
-  margin: 0;
+  gap: 1.25rem;
+  margin: 1rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -179,34 +296,43 @@ h1:focus {
 }
 
 .book-card {
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  padding: 1rem;
-  border: 1px solid CanvasText;
-  border-radius: 0.5rem;
+  padding: 0.85rem 0.85rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--paper-raised);
 }
 
-.cover {
+.cover,
+.cover-placeholder {
   display: block;
   width: 100%;
-  height: 7.5rem;
-  margin: 0.75rem 0;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  margin: 0 0 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 0.2rem 0.55rem 0.55rem 0.2rem;
+  background: #ebe2d2;
   object-fit: contain;
-  border: 1px dashed CanvasText;
-  border-radius: 0.35rem;
-  background: Canvas;
 }
 
 .cover-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 7.5rem;
-  margin: 0.75rem 0;
-  border: 1px dashed CanvasText;
-  border-radius: 0.35rem;
-  background: Canvas;
-  font-size: 0.9rem;
+  margin: 0 0 0.95rem;
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+.add-book .cover,
+.add-book .cover-placeholder {
+  max-width: 11rem;
+  margin-top: 0.75rem;
 }
 
 .book-card h3,
@@ -216,26 +342,62 @@ h1:focus {
 }
 
 .book-card h3 {
-  margin-bottom: 0.25rem;
-  font-size: 1.15rem;
-  line-height: 1.3;
+  margin-bottom: 0.2rem;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.book-card p {
+  color: var(--ink-soft);
 }
 
 .labels {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
-  margin: 0.5rem 0 0;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0;
   padding: 0;
   list-style: none;
 }
 
 .labels li {
   margin: 0;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 @media (min-width: 40rem) {
+  main {
+    padding: 2.5rem 2rem 4rem;
+  }
+
   .book-list {
     grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .book-list {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto;
+    transition: none;
+    animation: none;
   }
 }

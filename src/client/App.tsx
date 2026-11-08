@@ -1,12 +1,28 @@
 import { useEffect, useState, type MouseEvent } from "react";
-import AddBookForm from "./AddBookForm.tsx";
-import { appendBook, createBook, type NewBookInput } from "./add-book.ts";
+import { appendBook, createBook, replaceBook, type NewBookInput } from "./add-book.ts";
 import BookCard from "./BookCard.tsx";
-import { demoBooks, hasCompletedReading } from "./demo-books.ts";
+import BookForm from "./BookForm.tsx";
+import { demoBooks, hasCompletedReading, type Book } from "./demo-books.ts";
+import { editBookId } from "./path.ts";
 import { bookMatchesQuery, formatResultCount } from "./search.ts";
 import { usePath } from "./use-path.ts";
 
 type Navigate = (to: string) => void;
+
+type Notice = {
+  kind: "added" | "updated";
+  id: string;
+  searchCleared: boolean;
+};
+
+const emptyBook: NewBookInput = {
+  title: "",
+  author: "",
+  ownership: "none",
+};
+
+const memoryNote =
+  "Ceci reste dans la mémoire de cette visite. Un rechargement l'efface. Rien n'est envoyé.";
 
 function PageLink({
   href,
@@ -41,32 +57,60 @@ function PageLink({
   );
 }
 
+function pageTitle(path: string, editing: Book | null, editingId: string | null): string {
+  if (path === "/") {
+    return "Bibliothèque";
+  }
+  if (path === "/ajouter") {
+    return "Ajouter un livre — Bibliothèque";
+  }
+  if (editingId) {
+    return editing
+      ? "Modifier un livre — Bibliothèque"
+      : "Livre introuvable — Bibliothèque";
+  }
+  return "Page introuvable — Bibliothèque";
+}
+
 export default function App() {
   const [books, setBooks] = useState(() => [...demoBooks]);
   const [query, setQuery] = useState("");
-  const [addedId, setAddedId] = useState<string | null>(null);
-  const [searchCleared, setSearchCleared] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [path, navigate] = usePath();
   const visibleBooks = books.filter((book) => bookMatchesQuery(book, query));
   const empty = visibleBooks.length === 0;
-  const added = books.find((book) => book.id === addedId) ?? null;
+  const editingId = editBookId(path);
+  const editing = editingId
+    ? (books.find((book) => book.id === editingId) ?? null)
+    : null;
+  const noticed = notice
+    ? (books.find((book) => book.id === notice.id) ?? null)
+    : null;
 
   useEffect(() => {
-    const titles: Record<string, string> = {
-      "/": "Bibliothèque",
-      "/ajouter": "Ajouter un livre — Bibliothèque",
-    };
-    document.title = titles[path] ?? "Page introuvable — Bibliothèque";
+    document.title = pageTitle(path, editing, editingId);
     document.getElementById("page-title")?.focus();
-  }, [path]);
+  }, [path, editing, editingId]);
+
+  function remember(kind: Notice["kind"], id: string) {
+    setNotice({
+      kind,
+      id,
+      searchCleared: query.trim() !== "",
+    });
+    setQuery("");
+    navigate("/");
+  }
 
   function addBook(input: NewBookInput) {
     const book = createBook(input, crypto.randomUUID());
     setBooks((previous) => appendBook(previous, book));
-    setAddedId(book.id);
-    setSearchCleared(query.trim() !== "");
-    setQuery("");
-    navigate("/");
+    remember("added", book.id);
+  }
+
+  function saveBook(id: string, input: NewBookInput) {
+    setBooks((previous) => replaceBook(previous, id, input));
+    remember("updated", id);
   }
 
   if (path === "/ajouter") {
@@ -78,7 +122,55 @@ export default function App() {
         <PageLink href="/" className="back-link" navigate={navigate}>
           Annuler et revenir à la bibliothèque
         </PageLink>
-        <AddBookForm onAdd={addBook} />
+        <BookForm
+          initial={emptyBook}
+          submitLabel="Ajouter"
+          note={memoryNote}
+          onSubmitBook={addBook}
+        />
+      </main>
+    );
+  }
+
+  if (editingId) {
+    if (!editing) {
+      return (
+        <main>
+          <h1 id="page-title" tabIndex={-1}>
+            Livre introuvable
+          </h1>
+          <p>
+            Ce livre n'est pas dans la liste de cette visite. Un rechargement
+            retire les livres ajoutés ici.
+          </p>
+          <PageLink href="/" className="back-link" navigate={navigate}>
+            Retour à la bibliothèque
+          </PageLink>
+        </main>
+      );
+    }
+
+    return (
+      <main>
+        <h1 id="page-title" tabIndex={-1}>
+          Modifier un livre
+        </h1>
+        <PageLink href="/" className="back-link" navigate={navigate}>
+          Annuler et revenir à la bibliothèque
+        </PageLink>
+        <BookForm
+          key={editing.id}
+          initial={{
+            title: editing.title,
+            author: editing.author,
+            ownership: editing.ownership,
+          }}
+          submitLabel="Enregistrer"
+          note={memoryNote}
+          onSubmitBook={(input) => {
+            saveBook(editing.id, input);
+          }}
+        />
       </main>
     );
   }
@@ -103,9 +195,10 @@ export default function App() {
         Bibliothèque
       </h1>
       <p className="banner">
-        Les quatre livres du départ sont inventés. Un livre que tu ajoutes
-        reste dans la mémoire de cette visite et disparaît au rechargement.
-        Rien n'est envoyé. Les libellés et l'aspect sont provisoires.
+        Les quatre livres du départ sont inventés. Un livre que tu ajoutes ou
+        modifies reste dans la mémoire de cette visite et disparaît au
+        rechargement. Rien n'est envoyé. Les libellés et l'aspect sont
+        provisoires.
       </p>
       <p className="home-actions">
         <PageLink href="/ajouter" className="add-link" navigate={navigate}>
@@ -142,11 +235,14 @@ export default function App() {
           )}
         </div>
       </form>
-      {added && (
+      {noticed && notice && (
         <p id="add-status" role="status">
-          « {added.title} » est ajouté pour cette visite. Il n'a pas encore de
-          lecture.
-          {searchCleared ? " La recherche a été effacée pour l'afficher." : ""}
+          {notice.kind === "added"
+            ? `« ${noticed.title} » est ajouté pour cette visite. Il n'a pas encore de lecture.`
+            : `Modification enregistrée : « ${noticed.title} ».`}
+          {notice.searchCleared
+            ? " La recherche a été effacée pour l'afficher."
+            : ""}
         </p>
       )}
       <h2>Livres</h2>
@@ -159,10 +255,15 @@ export default function App() {
         <ul className="book-list">
           {visibleBooks.map((book) => (
             <li key={book.id}>
-              <BookCard
-                book={book}
-                completed={hasCompletedReading(book.id)}
-              />
+              <BookCard book={book} completed={hasCompletedReading(book.id)}>
+                <PageLink
+                  href={`/livres/${encodeURIComponent(book.id)}/modifier`}
+                  className="edit-link"
+                  navigate={navigate}
+                >
+                  Modifier
+                </PageLink>
+              </BookCard>
             </li>
           ))}
         </ul>

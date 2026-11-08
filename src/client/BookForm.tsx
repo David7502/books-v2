@@ -2,8 +2,11 @@ import { useRef, useState, type FormEvent } from "react";
 import { validateNewBook, type NewBookInput } from "./add-book.ts";
 import type { Ownership } from "./demo-books.ts";
 
-type AddBookFormProps = {
-  onAdd: (book: NewBookInput) => void;
+type BookFormProps = {
+  initial: NewBookInput;
+  submitLabel: string;
+  note: string;
+  onSubmitBook: (book: NewBookInput) => void;
 };
 
 const fieldError = {
@@ -11,10 +14,15 @@ const fieldError = {
   author: "Indique un auteur.",
 } as const;
 
-export default function AddBookForm({ onAdd }: AddBookFormProps) {
-  const [title, setTitle] = useState("");
-  const [author, setAuthor] = useState("");
-  const [ownership, setOwnership] = useState<Ownership>("none");
+export default function BookForm({
+  initial,
+  submitLabel,
+  note,
+  onSubmitBook,
+}: BookFormProps) {
+  const [title, setTitle] = useState(initial.title);
+  const [author, setAuthor] = useState(initial.author);
+  const [ownership, setOwnership] = useState<Ownership>(initial.ownership);
   const [errors, setErrors] = useState<Array<"title" | "author">>([]);
   const titleRef = useRef<HTMLInputElement>(null);
   const authorRef = useRef<HTMLInputElement>(null);
@@ -33,55 +41,49 @@ export default function AddBookForm({ onAdd }: AddBookFormProps) {
       return;
     }
 
-    onAdd(result.book);
-    setTitle("");
-    setAuthor("");
-    setOwnership("none");
+    onSubmitBook(result.book);
     setErrors([]);
   }
 
   return (
     <form className="add-book" onSubmit={handleSubmit}>
-      <p className="add-note">
-        Cet ajout reste dans la mémoire de la page. Un rechargement l'efface.
-        Rien n'est envoyé.
-      </p>
+      <p className="add-note">{note}</p>
       <div>
-        <label htmlFor="new-book-title">Titre</label>
+        <label htmlFor="book-title">Titre</label>
         <input
           ref={titleRef}
-          id="new-book-title"
+          id="book-title"
           name="title"
           type="text"
           value={title}
           aria-invalid={errors.includes("title")}
-          aria-describedby={errors.includes("title") ? "new-book-title-error" : undefined}
+          aria-describedby={errors.includes("title") ? "book-title-error" : undefined}
           onChange={(event) => {
             setTitle(event.target.value);
           }}
         />
         {errors.includes("title") && (
-          <p id="new-book-title-error" className="add-error">
+          <p id="book-title-error" className="add-error">
             {fieldError.title}
           </p>
         )}
       </div>
       <div>
-        <label htmlFor="new-book-author">Auteur</label>
+        <label htmlFor="book-author">Auteur</label>
         <input
           ref={authorRef}
-          id="new-book-author"
+          id="book-author"
           name="author"
           type="text"
           value={author}
           aria-invalid={errors.includes("author")}
-          aria-describedby={errors.includes("author") ? "new-book-author-error" : undefined}
+          aria-describedby={errors.includes("author") ? "book-author-error" : undefined}
           onChange={(event) => {
             setAuthor(event.target.value);
           }}
         />
         {errors.includes("author") && (
-          <p id="new-book-author-error" className="add-error">
+          <p id="book-author-error" className="add-error">
             {fieldError.author}
           </p>
         )}
@@ -125,7 +127,7 @@ export default function AddBookForm({ onAdd }: AddBookFormProps) {
           Ni l’un ni l’autre (emprunt ou autre)
         </label>
       </fieldset>
-      <button type="submit">Ajouter</button>
+      <button type="submit">{submitLabel}</button>
     </form>
   );
 }

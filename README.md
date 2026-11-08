@@ -21,7 +21,7 @@ Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre aj
 | `src/client/BookCard.tsx` | Une carte. Elle affiche « j’ai », « je veux » et « j’ai lu » seulement quand c'est le cas. |
 | `src/client/search.ts` | Prépare le texte cherché et décide si un livre correspond. |
 | `src/client/add-book.ts` | Vérifie le titre et l'auteur, puis ajoute le livre sans modifier l'ancien tableau. |
-| `src/client/AddBookForm.tsx` | Le formulaire. Il appelle `onAdd` quand les champs sont valides. |
+| `src/client/BookForm.tsx` | Le formulaire partagé : ajout vide, ou modification déjà remplie. |
 | `src/client/path.ts` | Nettoie l'adresse (`/ajouter/` devient `/ajouter`). |
 | `src/client/use-path.ts` | Lit l'adresse et la change sans recharger la page. |
 | `src/client/App.tsx` | Garde les livres en mémoire et choisit l'écran selon l'adresse. |
@@ -103,19 +103,21 @@ Le Worker sert déjà `index.html` pour une adresse qui n'est pas un fichier. C'
 
 `/api/health` et les autres adresses `/api/...` passent d'abord par le Worker. Une adresse d'API inconnue répond `404`, pas la page HTML.
 
-On n'ajoute pas de bibliothèque de routes : deux écrans et une fonction `navigate` suffisent.
+On n'ajoute pas de bibliothèque de routes. L'accueil est `/`, l'ajout `/ajouter`, la modification `/livres/identifiant/modifier`.
 
 ## Ajouter un livre
 
-Le bouton **Ajouter un livre** de l'accueil mène à `/ajouter`. Le formulaire est un enfant de cet écran. Sa prop `onAdd` est une fonction fournie par `App`. Quand l'ajout est accepté, l'enfant appelle `onAdd` avec le titre, l'auteur et la possession. Il ne fabrique pas l'`id`. Ensuite `App` revient à `/`.
+Le bouton **Ajouter un livre** de l'accueil mène à `/ajouter`. **Modifier**, sur une carte, mène à `/livres/…/modifier`. Les deux écrans utilisent le même `BookForm`. À la création, les champs commencent vides. À la modification, ils sont remplis avec le livre trouvé par son `id`.
+
+`onSubmitBook` est la fonction fournie par `App`. Pour un ajout, elle fabrique un nouvel `id`. Pour une modification, elle garde l'`id`, la couverture et les lectures : seul le titre, l'auteur et la possession changent.
 
 `onSubmit` reçoit l'événement du formulaire. `preventDefault()` empêche le navigateur de recharger la page. La touche Entrée dans un champ envoie ce même événement.
 
 Les champs sont contrôlés : `value` affiche le `useState`, `onChange` le met à jour. `validateNewBook` enlève les espaces autour du titre et de l'auteur. Un texte vide, ou fait seulement d'espaces, est refusé et le formulaire n'est pas vidé. « j’ai » vaut `owned`, « je veux » vaut `wishlist`, « Ni l’un ni l’autre » vaut `none`. Aucun de ces choix ne crée une lecture : « j’ai lu » ne s'affiche pas pour un livre ajouté.
 
-`setBooks((previous) => appendBook(previous, book))` construit un **nouveau** tableau `[...previous, book]`. On n'appelle pas `push` : `push` modifierait le tableau déjà en mémoire, et React peut ne pas voir le changement. `crypto.randomUUID()` donne un `id` différent à chaque ajout. Les quatre livres de démo gardent les leurs.
+`appendBook` construit un nouveau tableau `[...previous, book]`. `replaceBook` en construit un autre avec `map` : le livre dont l'`id` correspond est un nouvel objet, les autres restent les mêmes. On ne modifie pas l'ancien tableau sur place. Cette liste vit dans le `useState` de la visite. Elle n'est pas encore une base de données : recharger revient aux quatre livres inventés. Un `id` ajouté puis perdu après rechargement mène à « Livre introuvable », sans planter.
 
-Au retour, la recherche est vidée s'il y en avait une, pour que la nouvelle carte soit visible. Le message le dit. **Annuler et revenir à la bibliothèque** revient à `/` sans ajouter. L'ajout n'est pas envoyé : recharger la page revient aux quatre livres inventés.
+Au retour, la recherche est vidée s'il y en avait une, pour que la carte soit visible. Le message le dit. **Annuler** revient à `/` sans enregistrer.
 
 ## Résultat attendu
 
@@ -133,4 +135,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev`, clique **Ajouter un livre** : l'adresse devient `/ajouter`. Ajoute « Le nuage en papier », puis annule un autre essai. Reviens en arrière avec le navigateur. Recharge : le livre ajouté a disparu.
+Avec `npm run dev`, ouvre **Modifier** sur « La brume du phare ». Change le titre, enregistre, puis cherche ce nouveau titre. « j’ai lu » est encore là. Annule une autre modification : le livre ne change pas. Recharge : le titre d'origine revient.

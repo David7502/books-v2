@@ -1,11 +1,13 @@
+import type { ReactNode } from "react";
 import type { Book } from "./demo-books.ts";
 
 type BookCardProps = {
   book: Book;
   completed: boolean;
+  children?: ReactNode;
 };
 
-export default function BookCard({ book, completed }: BookCardProps) {
+export default function BookCard({ book, completed, children }: BookCardProps) {
   const showOwned = book.ownership === "owned";
   const showWishlist = book.ownership === "wishlist";
   const hasLabel = showOwned || showWishlist || completed;
@@ -22,6 +24,7 @@ export default function BookCard({ book, completed }: BookCardProps) {
           {completed && <li>j’ai lu</li>}
         </ul>
       )}
+      {children}
     </article>
   );
 }

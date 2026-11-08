@@ -81,9 +81,14 @@ h2 {
 }
 
 .add-link,
-.back-link {
+.back-link,
+.edit-link {
   display: inline-block;
   font-weight: 700;
+}
+
+.edit-link {
+  margin-top: 0.75rem;
 }
 
 h1:focus {

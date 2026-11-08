@@ -1,5 +1,5 @@
 import { validateReadingInput } from "./validate-reading.ts";
-import { validateBookInput } from "./validate.ts";
+import { validateBookInput, validateCreateBook } from "./validate.ts";
 
 const MAX_BODY_BYTES = 4096;
 
@@ -102,18 +102,35 @@ async function insertBook(db: D1Database, request: Request): Promise<Response> {
   if (!body.ok) {
     return body.response;
   }
-  const parsed = validateBookInput(body.value);
+  const parsed = validateCreateBook(body.value);
   if (!parsed.ok) {
     return jsonError(parsed.error, 400);
   }
 
   const id = crypto.randomUUID();
-  await db
-    .prepare(
-      "INSERT INTO books (id, title, author, ownership, cover_key) VALUES (?, ?, ?, ?, NULL)",
-    )
-    .bind(id, parsed.book.title, parsed.book.author, parsed.book.ownership)
-    .run();
+  const statements = [
+    db
+      .prepare(
+        "INSERT INTO books (id, title, author, ownership, cover_key) VALUES (?, ?, ?, ?, NULL)",
+      )
+      .bind(id, parsed.book.title, parsed.book.author, parsed.book.ownership),
+  ];
+  if (parsed.read) {
+    statements.push(
+      db
+        .prepare(
+          `INSERT INTO readings
+            (id, book_id, status, started_on, finished_on, location, rating)
+           VALUES (?, ?, 'read', NULL, NULL, NULL, NULL)`,
+        )
+        .bind(crypto.randomUUID(), id),
+    );
+  }
+  try {
+    await db.batch(statements);
+  } catch {
+    return jsonError("Le livre n'a pas été enregistré.", 500);
+  }
 
   const row = await db
     .prepare(`${bookSelect} WHERE books.id = ?`)

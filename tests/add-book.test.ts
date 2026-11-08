@@ -37,6 +37,18 @@ if (!missingBoth.ok) {
   assert.deepEqual(missingBoth.errors, ["title", "author"]);
 }
 
+const readWithoutOwning = validateNewBook({
+  title: "Le livre emprunté",
+  author: "Lina",
+  ownership: "none",
+  read: true,
+});
+assert.equal(readWithoutOwning.ok, true);
+if (readWithoutOwning.ok) {
+  assert.equal(readWithoutOwning.book.ownership, "none");
+  assert.equal(readWithoutOwning.book.read, true);
+}
+
 for (const ownership of ["owned", "wishlist", "none"] as const) {
   const result = validateNewBook({
     title: "  Le nuage en papier  ",

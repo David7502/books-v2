@@ -116,7 +116,9 @@ Le bouton **Ajouter un livre** de l'accueil mène à `/ajouter`. **Modifier**, s
 
 `onSubmit` reçoit l'événement du formulaire. `preventDefault()` empêche le navigateur de recharger la page. La touche Entrée dans un champ envoie ce même événement.
 
-Les champs sont contrôlés : `value` affiche le `useState`, `onChange` le met à jour. `validateNewBook` enlève les espaces autour du titre et de l'auteur. Un texte vide, ou fait seulement d'espaces, est refusé et le formulaire n'est pas vidé. « j’ai » vaut `owned`, « je veux » vaut `wishlist`, « Ni l’un ni l’autre » vaut `none`. Aucun de ces choix ne crée une lecture : « j’ai lu » ne s'affiche pas pour un livre ajouté.
+Les champs sont contrôlés : `value` affiche le `useState`, `onChange` le met à jour. `validateNewBook` enlève les espaces autour du titre et de l'auteur. Un texte vide, ou fait seulement d'espaces, est refusé et le formulaire n'est pas vidé. La case « j’ai » vaut `owned`. La case « je veux » vaut `wishlist`. Les deux peuvent rester vides : le livre est alors `none`, sans case nommée « Ni l’un ni l’autre ». Cocher l'une décoche l'autre, parce que la base ne garde qu'un seul lien. Les livres déjà enregistrés avec `none` restent ainsi tant qu'on ne coche rien.
+
+Sur `/ajouter` seulement, la case **J’ai lu** est indépendante. Si elle est cochée, le Worker crée le livre et une fiche `read` dans le même `batch` D1. Les dates, le lieu et la note restent vides. Si l'une des deux écritures échoue, aucune n'est gardée. Modifier un livre n'envoie pas cette case : la fiche se change sur sa propre page.
 
 `appendBook` construit un nouveau tableau `[...previous, book]`. `replaceBook` en construit un autre avec `map` : le livre dont l'`id` correspond est un nouvel objet, les autres restent les mêmes. On ne modifie pas l'ancien tableau sur place. Cette liste vit dans le `useState` de la visite. Elle n'est pas encore une base de données : recharger revient aux quatre livres inventés. Un `id` ajouté puis perdu après rechargement mène à « Livre introuvable », sans planter.
 
@@ -131,6 +133,12 @@ Chaque livre a une seule fiche, dans la table `readings`, reliée par `book_id`.
 Une date vide reste vide. « À lire » n'accepte aucune date. « En cours » peut avoir un début, pas de fin. « Terminé » peut avoir les deux, et la fin ne peut pas précéder le début. La note est 1 à 5, ou « Sans note ». Elle ne change ni le statut ni la possession.
 
 « j’ai lu » vient du statut Terminé de cette fiche. Changer « j’ai » ou « je veux » ne change pas la fiche.
+
+## Compter et filtrer
+
+L'accueil montre quatre boutons : **Tous**, **Lu**, **Je veux**, **J’ai**. Le nombre sur chaque bouton compte toute la bibliothèque, pas la recherche en cours. **Tous** est le nombre de livres enregistrés. **Lu** compte les fiches Terminées. **Je veux** compte `wishlist`. **J’ai** compte `owned`. Un livre possédé et terminé compte dans Tous, dans Lu et dans J’ai. La somme des boutons n'est donc pas le total.
+
+Le bouton pressé a `aria-pressed="true"` et un contour. La liste en dessous applique ce filtre et la recherche titre ou auteur. Le nombre sous **Livres** est celui des cartes affichées. S'il ne reste rien, le message le dit, et **Revenir à Tous** enlève le filtre et la recherche. **Effacer**, à côté du champ, n'enlève que le texte.
 
 ## La base locale
 
@@ -147,7 +155,8 @@ D1 est le service de base de Cloudflare. Ici, `remote` vaut `false` et aucun ide
 - Les anciens libellés « Possédé », « Liste d'achat » et « Ni possédé, ni sur la liste d'achat » n'apparaissent plus.
 - `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`.
 - `phare` laisse « La brume du phare », avec « j’ai » et « j’ai lu ». `memoires` trouve « Mémoires d'un cartographe distrait ». `zzzz` affiche « Aucun livre » et une phrase qui dit qu'aucun livre ne correspond.
-- Un titre ou un auteur vide est refusé. Un livre ajouté avec « j’ai » n'affiche pas « j’ai lu » tant qu'aucune fiche n'est terminée. Il reste après rechargement.
+- Un titre ou un auteur vide est refusé. Ajouter un livre avec **J’ai lu** et sans cocher « j’ai » affiche seulement « j’ai lu ». Ajouter avec « j’ai » sans cette case n'affiche pas « j’ai lu ». Les deux ensemble affichent les deux. Le livre reste après rechargement.
+- Les boutons **Tous**, **Lu**, **Je veux** et **J’ai** montrent des totaux qui ne changent pas quand on cherche. **Lu** puis une recherche ne garde que les livres terminés qui correspondent.
 - `npm test`, `npm run typecheck` et `npm run build` se terminent sans erreur.
 
 ## Secrets
@@ -156,4 +165,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev`, ouvre **Lecture** sur un livre. Enregistre le statut Terminé, reviens à la carte : « j’ai lu » est là, à côté de « j’ai » si le livre est possédé. Rouvre la fiche, passe le statut à En cours, enregistre : « j’ai lu » disparaît, le livre reste. Recharge : la même fiche est encore là.
+Avec `npm run dev`, ajoute un livre en cochant seulement **J’ai lu**. La carte montre « j’ai lu », sans « j’ai ». Le bouton **Lu** le compte. **J’ai** ne le compte pas. Aucune migration n'est nécessaire pour cette étape.

@@ -6,6 +6,7 @@ type BookFormProps = {
   initial: NewBookInput;
   submitLabel: string;
   note: string;
+  showRead?: boolean;
   onSubmitBook: (book: NewBookInput) => Promise<void>;
 };
 
@@ -18,11 +19,13 @@ export default function BookForm({
   initial,
   submitLabel,
   note,
+  showRead = false,
   onSubmitBook,
 }: BookFormProps) {
   const [title, setTitle] = useState(initial.title);
   const [author, setAuthor] = useState(initial.author);
   const [ownership, setOwnership] = useState<Ownership>(initial.ownership);
+  const [read, setRead] = useState(initial.read === true);
   const [errors, setErrors] = useState<Array<"title" | "author">>([]);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -34,7 +37,12 @@ export default function BookForm({
     if (saving) {
       return;
     }
-    const result = validateNewBook({ title, author, ownership });
+    const result = validateNewBook({
+      title,
+      author,
+      ownership,
+      read: showRead ? read : false,
+    });
 
     if (!result.ok) {
       setSubmitError(null);
@@ -108,41 +116,47 @@ export default function BookForm({
         <legend>Lien avec ce livre</legend>
         <label>
           <input
-            type="radio"
-            name="ownership"
-            value="owned"
+            id="ownership-owned"
+            type="checkbox"
             checked={ownership === "owned"}
-            onChange={() => {
-              setOwnership("owned");
+            onChange={(event) => {
+              setOwnership(event.target.checked ? "owned" : "none");
             }}
           />
           j’ai
         </label>
         <label>
           <input
-            type="radio"
-            name="ownership"
-            value="wishlist"
+            id="ownership-wishlist"
+            type="checkbox"
             checked={ownership === "wishlist"}
-            onChange={() => {
-              setOwnership("wishlist");
+            onChange={(event) => {
+              setOwnership(event.target.checked ? "wishlist" : "none");
             }}
           />
           je veux
         </label>
-        <label>
-          <input
-            type="radio"
-            name="ownership"
-            value="none"
-            checked={ownership === "none"}
-            onChange={() => {
-              setOwnership("none");
-            }}
-          />
-          Ni l’un ni l’autre (emprunt ou autre)
-        </label>
+        <p className="add-note">Tu peux n’en cocher aucune.</p>
       </fieldset>
+      {showRead ? (
+        <fieldset>
+          <legend>Lecture</legend>
+          <label>
+            <input
+              id="book-read"
+              type="checkbox"
+              checked={read}
+              onChange={(event) => {
+                setRead(event.target.checked);
+              }}
+            />
+            J’ai lu
+          </label>
+          <p className="add-note">
+            Coche ceci pour créer une fiche Terminé, sans date, lieu ni note.
+          </p>
+        </fieldset>
+      ) : null}
       {submitError && <p className="add-error">{submitError}</p>}
       <button type="submit" disabled={saving}>
         {saving ? "Enregistrement…" : submitLabel}

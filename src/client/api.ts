@@ -55,7 +55,12 @@ export async function createBook(input: NewBookInput): Promise<LibraryBook> {
   const response = await request("/api/books", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      title: input.title,
+      author: input.author,
+      ownership: input.ownership,
+      read: input.read === true,
+    }),
   });
   return (await response.json()) as LibraryBook;
 }
@@ -109,7 +114,11 @@ export async function updateBook(
   const response = await request(`/api/books/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      title: input.title,
+      author: input.author,
+      ownership: input.ownership,
+    }),
   });
   return (await response.json()) as LibraryBook;
 }

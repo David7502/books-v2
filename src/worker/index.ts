@@ -1,3 +1,4 @@
+import { validateReadingInput } from "./validate-reading.ts";
 import { validateBookInput } from "./validate.ts";
 
 const MAX_BODY_BYTES = 4096;
@@ -152,6 +153,126 @@ async function updateBook(db: D1Database, request: Request, id: string): Promise
   return Response.json(toBook(row));
 }
 
+type ReadingRow = {
+  id: string;
+  book_id: string;
+  status: string;
+  started_on: string | null;
+  finished_on: string | null;
+  location: string | null;
+  rating: number | null;
+};
+
+function toReading(row: ReadingRow) {
+  return {
+    id: row.id,
+    bookId: row.book_id,
+    status: row.status,
+    startedOn: row.started_on,
+    finishedOn: row.finished_on,
+    location: row.location,
+    rating: row.rating,
+  };
+}
+
+async function bookExists(db: D1Database, bookId: string): Promise<boolean> {
+  const row = await db.prepare("SELECT id FROM books WHERE id = ?").bind(bookId).first<{ id: string }>();
+  return row !== null;
+}
+
+const readingSelect = `
+  SELECT id, book_id, status, started_on, finished_on, location, rating
+  FROM readings
+  WHERE book_id = ?
+  ORDER BY id
+`;
+
+async function readReadingSheet(db: D1Database, bookId: string): Promise<Response> {
+  const book = await db.prepare(`${bookSelect} WHERE books.id = ?`).bind(bookId).first<BookRow>();
+  if (!book) {
+    return jsonError("Ce livre n'existe pas.", 404);
+  }
+  const rows = await db.prepare(readingSelect).bind(bookId).all<ReadingRow>();
+  if (rows.results.length > 1) {
+    return Response.json({
+      book: toBook(book),
+      reading: null,
+      ambiguous: true,
+    });
+  }
+  return Response.json({
+    book: toBook(book),
+    reading: rows.results[0] ? toReading(rows.results[0]) : null,
+    ambiguous: false,
+  });
+}
+
+async function saveReadingSheet(
+  db: D1Database,
+  request: Request,
+  bookId: string,
+): Promise<Response> {
+  const body = await readJson(request);
+  if (!body.ok) {
+    return body.response;
+  }
+  const parsed = validateReadingInput(body.value);
+  if (!parsed.ok) {
+    return jsonError(parsed.error, 400);
+  }
+  if (!(await bookExists(db, bookId))) {
+    return jsonError("Ce livre n'existe pas.", 404);
+  }
+
+  const existing = await db.prepare(readingSelect).bind(bookId).all<ReadingRow>();
+  if (existing.results.length > 1) {
+    return jsonError(
+      "Plusieurs fiches existent déjà pour ce livre. Aucune n'a été modifiée.",
+      409,
+    );
+  }
+
+  const reading = parsed.reading;
+  if (existing.results.length === 1) {
+    const id = existing.results[0].id;
+    await db
+      .prepare(
+        `UPDATE readings
+         SET status = ?, started_on = ?, finished_on = ?, location = ?, rating = ?
+         WHERE id = ? AND book_id = ?`,
+      )
+      .bind(
+        reading.status,
+        reading.startedOn,
+        reading.finishedOn,
+        reading.location,
+        reading.rating,
+        id,
+        bookId,
+      )
+      .run();
+  } else {
+    await db
+      .prepare(
+        `INSERT INTO readings
+          (id, book_id, status, started_on, finished_on, location, rating)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        crypto.randomUUID(),
+        bookId,
+        reading.status,
+        reading.startedOn,
+        reading.finishedOn,
+        reading.location,
+        reading.rating,
+      )
+      .run();
+  }
+
+  return readReadingSheet(db, bookId);
+}
+
 async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === "/api/health") {
@@ -163,6 +284,14 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
   if (url.pathname === "/api/books" && request.method === "POST") {
     return insertBook(env.DB, request);
+  }
+
+  const readingMatch = /^\/api\/books\/([^/]+)\/reading$/.exec(url.pathname);
+  if (readingMatch && request.method === "GET") {
+    return readReadingSheet(env.DB, decodeURIComponent(readingMatch[1]));
+  }
+  if (readingMatch && request.method === "PUT") {
+    return saveReadingSheet(env.DB, request, decodeURIComponent(readingMatch[1]));
   }
 
   const updateMatch = /^\/api\/books\/([^/]+)$/.exec(url.pathname);

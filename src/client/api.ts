@@ -1,5 +1,6 @@
 import type { Ownership } from "./demo-books.ts";
 import type { NewBookInput } from "./add-book.ts";
+import type { ReadingInput } from "../worker/validate-reading.ts";
 
 export type LibraryBook = {
   id: string;
@@ -57,6 +58,48 @@ export async function createBook(input: NewBookInput): Promise<LibraryBook> {
     body: JSON.stringify(input),
   });
   return (await response.json()) as LibraryBook;
+}
+
+export type ReadingRecord = {
+  id: string;
+  bookId: string;
+  status: ReadingInput["status"];
+  startedOn: string | null;
+  finishedOn: string | null;
+  location: string | null;
+  rating: number | null;
+};
+
+export async function fetchReading(
+  bookId: string,
+): Promise<{ book: LibraryBook; reading: ReadingRecord | null; ambiguous: boolean }> {
+  const response = await request(
+    `/api/books/${encodeURIComponent(bookId)}/reading`,
+  );
+  return (await response.json()) as {
+    book: LibraryBook;
+    reading: ReadingRecord | null;
+    ambiguous: boolean;
+  };
+}
+
+export async function saveReading(
+  bookId: string,
+  input: ReadingInput,
+): Promise<{ book: LibraryBook; reading: ReadingRecord | null; ambiguous: boolean }> {
+  const response = await request(
+    `/api/books/${encodeURIComponent(bookId)}/reading`,
+    {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+  return (await response.json()) as {
+    book: LibraryBook;
+    reading: ReadingRecord | null;
+    ambiguous: boolean;
+  };
 }
 
 export async function updateBook(

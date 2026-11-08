@@ -7,9 +7,9 @@ Application de livres, construite une étape à la fois. L'interface affiche les
 Deux idées restent séparées, dans deux tableaux du même fichier de démo. Rien n'est enregistré.
 
 - un **livre** (`books`) : titre, auteur en texte simple, possession (`owned`, `wishlist` ou `none`), et plus tard une couverture ;
-- une **lecture** (`readings`) : pour l'instant, seulement `id`, `bookId` et `status` (`to_read`, `reading` ou `read`). Les dates, le lieu et la note viendront plus tard.
+- une **lecture** (`readings`) : une fiche par livre, avec un statut, des dates facultatives, un lieu et une note.
 
-Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre ajoutera une nouvelle lecture, pas un second livre.
+Posséder un livre et l'avoir lu sont deux faits différents. Chaque livre a au plus une fiche de lecture.
 
 ## Fichiers
 
@@ -104,7 +104,7 @@ L'accueil est `/`. Le formulaire est `/ajouter`. Ce ne sont pas deux rechargemen
 
 Le Worker sert déjà `index.html` pour une adresse qui n'est pas un fichier. C'est le mode `single-page-application`. React lit ensuite `window.location.pathname`. Un clic simple sur **Ajouter un livre** appelle `history.pushState` : l'adresse change, la page ne se recharge pas. Le bouton Précédent du navigateur envoie `popstate`, et l'écran suit. Ouvrir le lien dans un nouvel onglet charge vraiment `/ajouter`, comme un rechargement : la mémoire est vide, il reste les quatre livres inventés.
 
-`/api/health` et les autres adresses `/api/...` passent d'abord par le Worker. Une adresse d'API inconnue répond `404`, pas la page HTML.
+`/api/health` et les autres adresses `/api/...` passent d'abord par le Worker. Une adresse d'API inconnue répond `404`, pas la page HTML. La fiche de lecture est sur `/livres/identifiant/lecture`.
 
 On n'ajoute pas de bibliothèque de routes. L'accueil est `/`, l'ajout `/ajouter`, la modification `/livres/identifiant/modifier`.
 
@@ -122,6 +122,16 @@ Les champs sont contrôlés : `value` affiche le `useState`, `onChange` le met �
 
 Au retour, la recherche est vidée s'il y en avait une, pour que la carte soit visible. Le message le dit. **Annuler** revient à `/` sans enregistrer.
 
+## Une fiche de lecture
+
+Chaque livre a une seule fiche, dans la table `readings`, reliée par `book_id`. Le bouton **Lecture** ouvre `/livres/identifiant/lecture`. Le même formulaire sert la première fois et les fois suivantes : le premier enregistrement crée la ligne, le suivant met à jour la même ligne.
+
+`0002_reading_details.sql` ajoute des colonnes vides : dates, lieu, note. `0003_one_reading_per_book.sql` ajoute un index unique sur `book_id`. Les lignes déjà présentes restent. `npm run db:migrate` n'efface rien. Le jeu de démo et la base locale inspectée n'ont pas deux fiches pour un même livre. Si une base en avait déjà, l'index refuserait de se créer et le serveur refuserait d'en choisir une, sans les supprimer.
+
+Une date vide reste vide. « À lire » n'accepte aucune date. « En cours » peut avoir un début, pas de fin. « Terminé » peut avoir les deux, et la fin ne peut pas précéder le début. La note est 1 à 5, ou « Sans note ». Elle ne change ni le statut ni la possession.
+
+« j’ai lu » vient du statut Terminé de cette fiche. Changer « j’ai » ou « je veux » ne change pas la fiche.
+
 ## La base locale
 
 Le navigateur appelle `/api/books`. Le Worker lit `env.DB`, exécute du SQL dont les valeurs viennent de `?` (elles ne sont pas collées dans la phrase SQL), puis renvoie du JSON. React range ce JSON dans son état.
@@ -137,7 +147,7 @@ D1 est le service de base de Cloudflare. Ici, `remote` vaut `false` et aucun ide
 - Les anciens libellés « Possédé », « Liste d'achat » et « Ni possédé, ni sur la liste d'achat » n'apparaissent plus.
 - `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`.
 - `phare` laisse « La brume du phare », avec « j’ai » et « j’ai lu ». `memoires` trouve « Mémoires d'un cartographe distrait ». `zzzz` affiche « Aucun livre » et une phrase qui dit qu'aucun livre ne correspond.
-- Un titre ou un auteur vide est refusé. Un livre ajouté avec « j’ai » n'affiche pas « j’ai lu ». Après rechargement, il n'est plus là.
+- Un titre ou un auteur vide est refusé. Un livre ajouté avec « j’ai » n'affiche pas « j’ai lu » tant qu'aucune fiche n'est terminée. Il reste après rechargement.
 - `npm test`, `npm run typecheck` et `npm run build` se terminent sans erreur.
 
 ## Secrets
@@ -146,4 +156,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev`, ajoute un livre, recharge la page, modifie son titre, puis arrête et relance `npm run dev`. Le livre modifié est encore là. Une recherche `zzzz` puis un ajout vide la recherche pour montrer la carte.
+Avec `npm run dev`, ouvre **Lecture** sur un livre. Enregistre le statut Terminé, reviens à la carte : « j’ai lu » est là, à côté de « j’ai » si le livre est possédé. Rouvre la fiche, passe le statut à En cours, enregistre : « j’ai lu » disparaît, le livre reste. Recharge : la même fiche est encore là.

@@ -154,7 +154,7 @@ Remplacer une couverture écrit d'abord le nouvel objet. La clé dans D1 ne chan
 
 Le navigateur appelle `/api/books`. Le Worker lit `env.DB`, exécute du SQL dont les valeurs viennent de `?` (elles ne sont pas collées dans la phrase SQL), puis renvoie du JSON. React range ce JSON dans son état.
 
-D1 est le service de base de Cloudflare. Ici, `remote` vaut `false` et aucun identifiant de base distante n'est écrit : Wrangler n'a pas créé de base sur le compte. `npm run dev` utilise l'émulation locale, un fichier SQLite dans `.wrangler/`, ignoré par Git. Ce n'est pas la base du nuage. Un autre ordinateur ne la voit pas. Ne lance pas de déploiement : l'API n'a pas encore d'authentification.
+D1 est le service de base de Cloudflare. Ici, `remote` vaut `false` et aucun identifiant de base distante n'est écrit : Wrangler n'a pas créé de base sur le compte. `npm run dev` utilise l'émulation locale, un fichier SQLite dans `.wrangler/`, ignoré par Git. Ce n'est pas la base du nuage. Un autre ordinateur ne la voit pas. Ne lance pas de déploiement : la vérification du jeton est dans le code, mais aucune application Access n'est créée.
 
 `npm run preview`, après `npm run build`, réutilise aussi cette base locale si les migrations ont été appliquées. Les commandes de base portent `--local`. Il n'y a pas de commande de remise à zéro dans ce dépôt.
 
@@ -163,12 +163,30 @@ D1 est le service de base de Cloudflare. Ici, `remote` vaut `false` et aucun ide
 - L'accueil `/` affiche le titre **Bibliothèque**, le bouton **Ajouter un livre**, la recherche, et **4** cartes quand la recherche est vide. Le formulaire est sur `/ajouter`.
 - « La brume du phare » : « j’ai » et « j’ai lu ». « Mémoires d'un cartographe distrait » : « j’ai ». « L'horloge sans aiguilles » : « je veux ». « Le jardin sous la gare » : « j’ai lu ».
 - Les anciens libellés « Possédé », « Liste d'achat » et « Ni possédé, ni sur la liste d'achat » n'apparaissent plus.
-- `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`.
+- Avec `.dev.vars` qui contient `ACCESS_LOCAL_EXEMPT=dev-only`, `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`. Sans ce fichier, la même adresse répond `401`.
 - `phare` laisse « La brume du phare », avec « j’ai » et « j’ai lu ». `memoires` trouve « Mémoires d'un cartographe distrait ». `zzzz` affiche « Aucun livre » et une phrase qui dit qu'aucun livre ne correspond.
 - Un titre ou un auteur vide est refusé. Ajouter un livre avec **J’ai lu** et sans cocher « j’ai » affiche seulement « j’ai lu ». Ajouter avec « j’ai » sans cette case n'affiche pas « j’ai lu ». Les deux ensemble affichent les deux. Le livre reste après rechargement.
 - Les boutons **Tous**, **Lu**, **Je veux** et **J’ai** montrent des totaux qui ne changent pas quand on cherche. **Lu** puis une recherche ne garde que les livres terminés qui correspondent.
 - Une couverture JPEG, PNG ou WebP d'au plus 2 Mo s'affiche sur la carte et après rechargement. Un SVG, une page HTML, ou une image trop lourde est refusé. Le livre sans image garde « Pas de couverture ».
 - `npm test`, `npm run typecheck` et `npm run build` se terminent sans erreur.
+
+## Préparer l'accès
+
+Ce dépôt ne met rien en ligne et ne crée pas d'application Access. Le code sait seulement refuser les adresses `/api/...` quand la protection n'est pas encore réglée, ou quand le jeton n'est pas valable.
+
+Cloudflare Access, plus tard, montrera une page de connexion et ajoutera un jeton signé dans l'en-tête `Cf-Access-Jwt-Assertion`. Le Worker vérifie la signature avec les clés publiques du domaine d'équipe, puis l'émetteur, l'audience et la date. Il ne lit pas l'en-tête qui annonce seulement un e-mail. Un cookie `CF_Authorization` est accepté seulement après la même vérification. Une modification venue d'un autre site est refusée. Les livres, les fiches et les couvertures ne sont lus qu'après ça.
+
+`ctx.access`, le raccourci documenté par Cloudflare, ne traverse pas le routeur des fichiers statiques. Cette application en a un, à cause de Vite. Le Worker valide donc le jeton lui-même, avec la bibliothèque `jose`. Le bloc `access.dev` de Wrangler ne peut pas ouvrir l'application locale : il ne remplit que `ctx.access`.
+
+Dans `wrangler.jsonc`, `TEAM_DOMAIN` et `POLICY_AUD` sont vides. C'est voulu : sans ces deux valeurs exactes, l'API répond que l'accès n'est pas configuré. Le nom d'hôte `localhost` ne change rien. `ACCESS_LOCAL_EXEMPT` est vide dans la configuration déployable. Pour travailler sur cette machine, un fichier `.dev.vars` ignoré par Git peut contenir seulement :
+
+```bash
+printf 'ACCESS_LOCAL_EXEMPT=dev-only\n' > .dev.vars
+```
+
+Wrangler l'utilise pour `npm run dev` et `npm run preview`, et ne l'envoie pas lors d'un déploiement. Cette exemption ne s'applique pas si `TEAM_DOMAIN` ou `POLICY_AUD` est rempli. Il ne faut pas recopier `dev-only` dans un secret du tableau de bord : le Worker ne peut pas distinguer ce secret d'un fichier local, parce que l'exécution locale reçoit aussi un objet `cf`.
+
+Aucune migration. Aucune commande `wrangler deploy`, `wrangler login` ou Access.
 
 ## Secrets
 
@@ -176,4 +194,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev`, ajoute un livre avec une petite image PNG et **J’ai lu**. La carte montre l'image et « j’ai lu ». Recharge : l'image est encore là. Ouvre **Modifier**, choisis une autre image, enregistre. L'ancienne ne disparaît que si la nouvelle est acceptée. Aucune migration, et pas de commande `wrangler r2 bucket create`.
+Crée `.dev.vars` comme indiqué plus haut, puis `npm run dev`. Ajoute un livre avec une image : la carte la montre. Sans ce fichier, et sans les futurs réglages Access, `/api/books` répond que l'accès n'est pas configuré. Rien n'est encore protégé par une vraie connexion Cloudflare.

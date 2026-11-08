@@ -1,6 +1,6 @@
 # Bibliothèque
 
-Application de livres, construite une étape à la fois. L'interface affiche quatre livres inventés, permet de les filtrer, et d'en ajouter un dans la mémoire de la page. Un rechargement efface cet ajout. Le Worker n'a pas changé. Il n'y a pas encore de base de données ni de mise en ligne.
+Application de livres, construite une étape à la fois. L'interface affiche les livres, permet de les chercher, d'en ajouter et d'en modifier. Les fiches sont enregistrées dans une base D1 **locale**. Elles restent après un rechargement et après un redémarrage du serveur de développement. Elles ne sont pas envoyées chez Cloudflare.
 
 ## Modèle accepté
 
@@ -28,7 +28,10 @@ Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre aj
 | `tests/search.test.ts` | Vérifie la recherche sans ouvrir le navigateur. |
 | `tests/add-book.test.ts` | Vérifie l'ajout : texte vide, possession, et livres de démo inchangés. |
 | `src/client/styles.css` | Mise en page courte : une colonne sur un téléphone, deux sur un écran large. |
-| `src/worker/index.ts` | Le Worker. Il répond uniquement à `GET /api/health`. |
+| `src/worker/index.ts` | L'API : liste, ajout et modification, avec le SQL paramétré. |
+| `src/worker/validate.ts` | Contrôle le JSON reçu avant toute requête SQL. |
+| `migrations/0001_books_and_readings.sql` | Crée les tables `books` et `readings`. |
+| `seed/demo.sql` | Jeu facultatif de livres inventés, sans écraser l'existant. |
 | `wrangler.jsonc` | Réglages du Worker : date de compatibilité, fichiers statiques, route `/api/*`, journaux. Aucun secret. |
 | `vite.config.ts` | Relie Vite, React et le plugin Cloudflare. |
 | `package.json` | Dépendances et commandes `dev`, `build`, `typecheck`, `preview`. |
@@ -47,18 +50,18 @@ Posséder un livre et l'avoir lu sont deux faits différents. Relire un livre aj
 Le navigateur parle à un seul programme local : Vite, avec le plugin Cloudflare. Ce programme fait deux choses.
 
 1. Pour `/`, `/src/client/...` et les autres fichiers de l'interface, il sert des **fichiers statiques**. En local, Vite les sert directement. Après `npm run build`, ce sont les fichiers générés dans `dist`.
-2. Pour `/api/*`, `wrangler.jsonc` envoie la requête au **Worker** (`run_worker_first`). `src/worker/index.ts` répond `{ "ok": true }` sur `/api/health`, et `404` sur les autres chemins `/api/*`.
-
-La page n'appelle pas `/api/health`. Cette adresse sert seulement à voir la séparation entre l'interface et le Worker. `{ "ok": true }` veut dire que la route a répondu. Il n'y a pas de service externe derrière.
+2. Pour `/api/*`, `wrangler.jsonc` envoie la requête au **Worker** (`run_worker_first`). `/api/health` répond `{ "ok": true }`. `/api/books` lit et écrit la base. Une autre adresse `/api/...` répond `404`.
 
 ## Commandes
 
 ```bash
 npm install
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
-Puis ouvrir l'adresse affichée, en général `http://localhost:5173/`.
+`db:migrate` crée les tables dans la base locale, dans `.wrangler/`. `db:seed` est facultatif : il ajoute quatre livres inventés seulement s'ils ne sont pas déjà là, sans écraser tes modifications. Sans ce seed, la liste démarre vide. Puis ouvrir l'adresse affichée, en général `http://localhost:5173/`.
 
 ```bash
 npm test
@@ -119,6 +122,14 @@ Les champs sont contrôlés : `value` affiche le `useState`, `onChange` le met �
 
 Au retour, la recherche est vidée s'il y en avait une, pour que la carte soit visible. Le message le dit. **Annuler** revient à `/` sans enregistrer.
 
+## La base locale
+
+Le navigateur appelle `/api/books`. Le Worker lit `env.DB`, exécute du SQL dont les valeurs viennent de `?` (elles ne sont pas collées dans la phrase SQL), puis renvoie du JSON. React range ce JSON dans son état.
+
+D1 est le service de base de Cloudflare. Ici, `remote` vaut `false` et aucun identifiant de base distante n'est écrit : Wrangler n'a pas créé de base sur le compte. `npm run dev` utilise l'émulation locale, un fichier SQLite dans `.wrangler/`, ignoré par Git. Ce n'est pas la base du nuage. Un autre ordinateur ne la voit pas. Ne lance pas de déploiement : l'API n'a pas encore d'authentification.
+
+`npm run preview`, après `npm run build`, réutilise aussi cette base locale si les migrations ont été appliquées. Les commandes de base portent `--local`. Il n'y a pas de commande de remise à zéro dans ce dépôt.
+
 ## Résultat attendu
 
 - L'accueil `/` affiche le titre **Bibliothèque**, le bouton **Ajouter un livre**, la recherche, et **4** cartes quand la recherche est vide. Le formulaire est sur `/ajouter`.
@@ -135,4 +146,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev`, ouvre **Modifier** sur « La brume du phare ». Change le titre, enregistre, puis cherche ce nouveau titre. « j’ai lu » est encore là. Annule une autre modification : le livre ne change pas. Recharge : le titre d'origine revient.
+Avec `npm run dev`, ajoute un livre, recharge la page, modifie son titre, puis arrête et relance `npm run dev`. Le livre modifié est encore là. Une recherche `zzzz` puis un ajout vide la recherche pour montrer la carte.

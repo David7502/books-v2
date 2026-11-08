@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
-import type { Book } from "./demo-books.ts";
+import type { Ownership } from "./demo-books.ts";
 
 type BookCardProps = {
-  book: Book;
+  book: {
+    title: string;
+    author: string;
+    ownership: Ownership;
+  };
   completed: boolean;
   children?: ReactNode;
 };

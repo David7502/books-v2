@@ -6,7 +6,7 @@ type BookFormProps = {
   initial: NewBookInput;
   submitLabel: string;
   note: string;
-  onSubmitBook: (book: NewBookInput) => void;
+  onSubmitBook: (book: NewBookInput) => Promise<void>;
 };
 
 const fieldError = {
@@ -24,14 +24,20 @@ export default function BookForm({
   const [author, setAuthor] = useState(initial.author);
   const [ownership, setOwnership] = useState<Ownership>(initial.ownership);
   const [errors, setErrors] = useState<Array<"title" | "author">>([]);
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const authorRef = useRef<HTMLInputElement>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) {
+      return;
+    }
     const result = validateNewBook({ title, author, ownership });
 
     if (!result.ok) {
+      setSubmitError(null);
       setErrors(result.errors);
       if (result.errors.includes("title")) {
         titleRef.current?.focus();
@@ -41,8 +47,18 @@ export default function BookForm({
       return;
     }
 
-    onSubmitBook(result.book);
-    setErrors([]);
+    setSaving(true);
+    setSubmitError(null);
+    try {
+      await onSubmitBook(result.book);
+      setErrors([]);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "L'enregistrement a échoué.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -127,7 +143,10 @@ export default function BookForm({
           Ni l’un ni l’autre (emprunt ou autre)
         </label>
       </fieldset>
-      <button type="submit">{submitLabel}</button>
+      {submitError && <p className="add-error">{submitError}</p>}
+      <button type="submit" disabled={saving}>
+        {saving ? "Enregistrement…" : submitLabel}
+      </button>
     </form>
   );
 }

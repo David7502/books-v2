@@ -146,7 +146,7 @@ Le formulaire d'ajout et celui de modification ont un champ image facultatif. JP
 
 Le Worker ne se fie pas au nom du fichier. Il lit les premiers octets. S'ils ne sont pas ceux d'un JPEG, d'un PNG ou d'un WebP, ou si le type annoncé ne correspond pas, il refuse et ne change rien. Une image acceptée est écrite dans le seau R2 `COVERS`, sous une clé `covers/` suivie d'un identifiant au hasard. D1 range seulement cette clé dans `cover_key`, qui existait déjà : aucune migration. La carte charge ensuite `/api/books/identifiant/cover`. Le Worker relit la clé, reprend l'objet, et répond avec son type et `nosniff`.
 
-`remote` vaut `false` pour ce seau comme pour D1. `npm run dev` simule R2 dans `.wrangler/`, ignoré par Git. Ne lance pas `wrangler r2 bucket create` : cela créerait un seau chez Cloudflare. Ne déploie pas.
+`remote` vaut `false` pour ce seau comme pour D1. `npm run dev` simule R2 dans `.wrangler/`, ignoré par Git. Ne lance pas `wrangler r2 bucket create` : cela créerait un seau chez Cloudflare. Ces commandes locales ne déploient pas.
 
 Remplacer une couverture écrit d'abord le nouvel objet. La clé dans D1 ne change qu'ensuite. Si cette écriture échoue, l'ancienne couverture reste. Un ajout avec image et **J’ai lu** part dans la même requête : si l'image est refusée, le livre n'est pas créé.
 
@@ -154,7 +154,9 @@ Remplacer une couverture écrit d'abord le nouvel objet. La clé dans D1 ne chan
 
 Le navigateur appelle `/api/books`. Le Worker lit `env.DB`, exécute du SQL dont les valeurs viennent de `?` (elles ne sont pas collées dans la phrase SQL), puis renvoie du JSON. React range ce JSON dans son état.
 
-D1 est le service de base de Cloudflare. Ici, `remote` vaut `false` et aucun identifiant de base distante n'est écrit : Wrangler n'a pas créé de base sur le compte. `npm run dev` utilise l'émulation locale, un fichier SQLite dans `.wrangler/`, ignoré par Git. Ce n'est pas la base du nuage. Un autre ordinateur ne la voit pas. Ne lance pas de déploiement : la vérification du jeton est dans le code, mais aucune application Access n'est créée.
+D1 est le service de base de Cloudflare. Dans ce dépôt, `remote` vaut `false` et aucun identifiant de base distante n'est écrit. `npm run dev` et `npm run preview` utilisent l'émulation locale, un fichier SQLite dans `.wrangler/`, ignoré par Git. Ce n'est pas la base du nuage. Un autre ordinateur ne la voit pas.
+
+L'écran ne répète plus cette phrase. Elle était fausse une fois l'application en ligne. On ne s'appuie pas sur `import.meta.env.DEV` ni sur le nom `localhost` pour l'afficher : `npm run preview` construit comme une version de production et reste pourtant sur la base locale.
 
 `npm run preview`, après `npm run build`, réutilise aussi cette base locale si les migrations ont été appliquées. Les commandes de base portent `--local`. Il n'y a pas de commande de remise à zéro dans ce dépôt.
 
@@ -184,7 +186,7 @@ Dans `wrangler.jsonc`, `TEAM_DOMAIN` et `POLICY_AUD` sont vides. C'est voulu : s
 printf 'ACCESS_LOCAL_EXEMPT=dev-only\n' > .dev.vars
 ```
 
-Wrangler l'utilise pour `npm run dev` et `npm run preview`, et ne l'envoie pas lors d'un déploiement. Cette exemption ne s'applique pas si `TEAM_DOMAIN` ou `POLICY_AUD` est rempli. Il ne faut pas recopier `dev-only` dans un secret du tableau de bord : le Worker ne peut pas distinguer ce secret d'un fichier local, parce que l'exécution locale reçoit aussi un objet `cf`.
+Wrangler l'utilise pour `npm run dev` et `npm run preview`, et ne l'envoie pas lors d'un déploiement. Cette exemption ne s'applique pas si `TEAM_DOMAIN` ou `POLICY_AUD` est rempli. Une valeur vide, ou l'absence de la ligne, ne donne aucun accès : seule la valeur exacte `dev-only` ouvre le mode local. On peut donc laisser `ACCESS_LOCAL_EXEMPT` vide, ou retirer l'entrée. Il ne faut jamais mettre `dev-only` dans un secret ou une variable du nuage : le Worker ne peut pas distinguer ce secret d'un fichier local, parce que l'exécution locale reçoit aussi un objet `cf`.
 
 Aucune migration. Aucune commande `wrangler deploy`, `wrangler login` ou Access.
 

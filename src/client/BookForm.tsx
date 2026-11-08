@@ -6,7 +6,6 @@ import { coverFileError } from "../worker/validate-cover.ts";
 type BookFormProps = {
   initial: NewBookInput;
   submitLabel: string;
-  note: string;
   showRead?: boolean;
   currentCoverUrl?: string | null;
   onSubmitBook: (book: NewBookInput, cover: File | null) => Promise<void>;
@@ -20,7 +19,6 @@ const fieldError = {
 export default function BookForm({
   initial,
   submitLabel,
-  note,
   showRead = false,
   currentCoverUrl = null,
   onSubmitBook,
@@ -94,7 +92,6 @@ export default function BookForm({
 
   return (
     <form className="add-book" onSubmit={handleSubmit}>
-      <p className="add-note">{note}</p>
       <div>
         <label htmlFor="book-title">Titre</label>
         <input

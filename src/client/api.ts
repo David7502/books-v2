@@ -51,6 +51,29 @@ export async function fetchBooks(): Promise<LibraryBook[]> {
   return body.books ?? [];
 }
 
+export async function createBookWithCover(
+  input: NewBookInput,
+  cover: File,
+): Promise<LibraryBook> {
+  const form = new FormData();
+  form.set("title", input.title);
+  form.set("author", input.author);
+  form.set("ownership", input.ownership);
+  form.set("read", input.read === true ? "true" : "false");
+  form.set("cover", cover);
+  const response = await request("/api/books", { method: "POST", body: form });
+  return (await response.json()) as LibraryBook;
+}
+
+export async function uploadCover(id: string, cover: File): Promise<LibraryBook> {
+  const response = await request(`/api/books/${encodeURIComponent(id)}/cover`, {
+    method: "PUT",
+    headers: { "content-type": cover.type },
+    body: cover,
+  });
+  return (await response.json()) as LibraryBook;
+}
+
 export async function createBook(input: NewBookInput): Promise<LibraryBook> {
   const response = await request("/api/books", {
     method: "POST",

@@ -3,9 +3,11 @@ import type { Ownership } from "./demo-books.ts";
 
 type BookCardProps = {
   book: {
+    id: string;
     title: string;
     author: string;
     ownership: Ownership;
+    coverKey: string | null;
   };
   completed: boolean;
   children?: ReactNode;
@@ -18,7 +20,15 @@ export default function BookCard({ book, completed, children }: BookCardProps) {
 
   return (
     <article className="book-card">
-      <p className="cover-placeholder">Pas de couverture</p>
+      {book.coverKey ? (
+        <img
+          className="cover"
+          src={`/api/books/${encodeURIComponent(book.id)}/cover?v=${encodeURIComponent(book.coverKey)}`}
+          alt={`Couverture de ${book.title}`}
+        />
+      ) : (
+        <p className="cover-placeholder">Pas de couverture</p>
+      )}
       <h3>{book.title}</h3>
       <p>{book.author}</p>
       {hasLabel && (

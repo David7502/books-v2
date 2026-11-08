@@ -1,3 +1,4 @@
+import { validateCoverBytes, type CoverType } from "./validate-cover.ts";
 import { validateReadingInput } from "./validate-reading.ts";
 import { validateBookInput, validateCreateBook } from "./validate.ts";
 
@@ -97,25 +98,71 @@ async function listBooks(db: D1Database): Promise<Response> {
   return Response.json({ books: result.results.map(toBook) });
 }
 
-async function insertBook(db: D1Database, request: Request): Promise<Response> {
-  const body = await readJson(request);
-  if (!body.ok) {
-    return body.response;
+async function readBoundedBytes(
+  request: Request,
+  maxBytes: number,
+): Promise<{ ok: true; bytes: Uint8Array } | { ok: false; response: Response }> {
+  const declared = request.headers.get("content-length");
+  if (declared === null || !/^\d+$/.test(declared)) {
+    return {
+      ok: false,
+      response: jsonError("La taille de l'image doit être annoncée.", 400),
+    };
   }
-  const parsed = validateCreateBook(body.value);
-  if (!parsed.ok) {
-    return jsonError(parsed.error, 400);
+  if (Number(declared) > maxBytes) {
+    return { ok: false, response: jsonError("L'image dépasse 2 Mo.", 400) };
+  }
+  if (!request.body) {
+    return { ok: false, response: jsonError("L'image est vide.", 400) };
   }
 
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    if (!value) {
+      continue;
+    }
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return { ok: false, response: jsonError("L'image dépasse 2 Mo.", 400) };
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, bytes };
+}
+
+async function storedBook(db: D1Database, id: string): Promise<BookRow | null> {
+  return db.prepare(`${bookSelect} WHERE books.id = ?`).bind(id).first<BookRow>();
+}
+
+async function insertStoredBook(
+  db: D1Database,
+  book: { title: string; author: string; ownership: string },
+  read: boolean,
+  coverKey: string | null,
+): Promise<Response> {
   const id = crypto.randomUUID();
   const statements = [
     db
       .prepare(
-        "INSERT INTO books (id, title, author, ownership, cover_key) VALUES (?, ?, ?, ?, NULL)",
+        "INSERT INTO books (id, title, author, ownership, cover_key) VALUES (?, ?, ?, ?, ?)",
       )
-      .bind(id, parsed.book.title, parsed.book.author, parsed.book.ownership),
+      .bind(id, book.title, book.author, book.ownership, coverKey),
   ];
-  if (parsed.read) {
+  if (read) {
     statements.push(
       db
         .prepare(
@@ -126,20 +173,200 @@ async function insertBook(db: D1Database, request: Request): Promise<Response> {
         .bind(crypto.randomUUID(), id),
     );
   }
-  try {
-    await db.batch(statements);
-  } catch {
-    return jsonError("Le livre n'a pas été enregistré.", 500);
-  }
-
-  const row = await db
-    .prepare(`${bookSelect} WHERE books.id = ?`)
-    .bind(id)
-    .first<BookRow>();
+  await db.batch(statements);
+  const row = await storedBook(db, id);
   if (!row) {
     return jsonError("Le serveur n'a pas pu répondre.", 500);
   }
   return Response.json(toBook(row), { status: 201 });
+}
+
+async function putCover(
+  bucket: R2Bucket,
+  bytes: Uint8Array,
+  contentType: CoverType,
+): Promise<string> {
+  const key = `covers/${crypto.randomUUID()}`;
+  await bucket.put(key, bytes, { httpMetadata: { contentType } });
+  return key;
+}
+
+async function discardCover(bucket: R2Bucket, key: string): Promise<void> {
+  try {
+    await bucket.delete(key);
+  } catch {
+    // An unreferenced object can remain. The cover still shown is not removed.
+  }
+}
+
+async function insertBook(db: D1Database, bucket: R2Bucket, request: Request): Promise<Response> {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    return insertBookWithCover(db, bucket, request);
+  }
+
+  const body = await readJson(request);
+  if (!body.ok) {
+    return body.response;
+  }
+  const parsed = validateCreateBook(body.value);
+  if (!parsed.ok) {
+    return jsonError(parsed.error, 400);
+  }
+  try {
+    return await insertStoredBook(db, parsed.book, parsed.read, null);
+  } catch {
+    return jsonError("Le livre n'a pas été enregistré.", 500);
+  }
+}
+
+async function insertBookWithCover(
+  db: D1Database,
+  bucket: R2Bucket,
+  request: Request,
+): Promise<Response> {
+  const declared = request.headers.get("content-length");
+  if (declared === null || !/^\d+$/.test(declared)) {
+    return jsonError("La taille de l'image doit être annoncée.", 400);
+  }
+  if (Number(declared) > 2 * 1024 * 1024 + 65536) {
+    return jsonError("L'image dépasse 2 Mo.", 400);
+  }
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return jsonError("Le formulaire n'est pas lisible.", 400);
+  }
+
+  const readField = form.get("read");
+  const parsed = validateCreateBook({
+    title: form.get("title"),
+    author: form.get("author"),
+    ownership: form.get("ownership"),
+    read: readField === "true" ? true : readField === "false" || readField === null ? false : readField,
+  });
+  if (!parsed.ok) {
+    return jsonError(parsed.error, 400);
+  }
+
+  const file = form.get("cover");
+  if (!(file instanceof File) || (file.size === 0 && file.name === "")) {
+    try {
+      return await insertStoredBook(db, parsed.book, parsed.read, null);
+    } catch {
+      return jsonError("Le livre n'a pas été enregistré.", 500);
+    }
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    return jsonError("L'image dépasse 2 Mo.", 400);
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const cover = validateCoverBytes(bytes, file.type);
+  if (!cover.ok) {
+    return jsonError(cover.error, 400);
+  }
+
+  let key: string;
+  try {
+    key = await putCover(bucket, bytes, cover.contentType);
+  } catch {
+    return jsonError("La couverture n'a pas été enregistrée.", 500);
+  }
+
+  try {
+    return await insertStoredBook(db, parsed.book, parsed.read, key);
+  } catch {
+    await discardCover(bucket, key);
+    return jsonError("Le livre n'a pas été enregistré.", 500);
+  }
+}
+
+async function replaceCover(
+  db: D1Database,
+  bucket: R2Bucket,
+  request: Request,
+  bookId: string,
+): Promise<Response> {
+  const current = await db
+    .prepare("SELECT id, cover_key FROM books WHERE id = ?")
+    .bind(bookId)
+    .first<{ id: string; cover_key: string | null }>();
+  if (!current) {
+    return jsonError("Ce livre n'existe pas.", 404);
+  }
+
+  const body = await readBoundedBytes(request, 2 * 1024 * 1024);
+  if (!body.ok) {
+    return body.response;
+  }
+  const cover = validateCoverBytes(body.bytes, request.headers.get("content-type"));
+  if (!cover.ok) {
+    return jsonError(cover.error, 400);
+  }
+
+  let key: string;
+  try {
+    key = await putCover(bucket, body.bytes, cover.contentType);
+  } catch {
+    return jsonError("La couverture n'a pas été enregistrée.", 500);
+  }
+
+  try {
+    const update = await db
+      .prepare("UPDATE books SET cover_key = ? WHERE id = ?")
+      .bind(key, bookId)
+      .run();
+    if ((update.meta.changes ?? 0) === 0) {
+      await discardCover(bucket, key);
+      return jsonError("Ce livre n'existe pas.", 404);
+    }
+  } catch {
+    await discardCover(bucket, key);
+    return jsonError("La couverture n'a pas été enregistrée.", 500);
+  }
+
+  if (current.cover_key && current.cover_key !== key) {
+    await discardCover(bucket, current.cover_key);
+  }
+
+  const row = await storedBook(db, bookId);
+  if (!row) {
+    return jsonError("Ce livre n'existe pas.", 404);
+  }
+  return Response.json(toBook(row));
+}
+
+async function readCover(db: D1Database, bucket: R2Bucket, bookId: string): Promise<Response> {
+  const row = await db
+    .prepare("SELECT cover_key FROM books WHERE id = ?")
+    .bind(bookId)
+    .first<{ cover_key: string | null }>();
+  if (!row) {
+    return jsonError("Ce livre n'existe pas.", 404);
+  }
+  if (!row.cover_key) {
+    return jsonError("Ce livre n'a pas de couverture.", 404);
+  }
+
+  const object = await bucket.get(row.cover_key);
+  if (!object || !("body" in object) || !object.body) {
+    return jsonError("La couverture est introuvable.", 404);
+  }
+  const contentType = object.httpMetadata?.contentType;
+  if (contentType !== "image/jpeg" && contentType !== "image/png" && contentType !== "image/webp") {
+    return jsonError("La couverture est introuvable.", 404);
+  }
+
+  return new Response(object.body, {
+    headers: {
+      "content-type": contentType,
+      "x-content-type-options": "nosniff",
+      "cache-control": "private, max-age=86400",
+    },
+  });
 }
 
 async function updateBook(db: D1Database, request: Request, id: string): Promise<Response> {
@@ -300,7 +527,15 @@ async function route(request: Request, env: Env): Promise<Response> {
     return listBooks(env.DB);
   }
   if (url.pathname === "/api/books" && request.method === "POST") {
-    return insertBook(env.DB, request);
+    return insertBook(env.DB, env.COVERS, request);
+  }
+
+  const coverMatch = /^\/api\/books\/([^/]+)\/cover$/.exec(url.pathname);
+  if (coverMatch && request.method === "GET") {
+    return readCover(env.DB, env.COVERS, decodeURIComponent(coverMatch[1]));
+  }
+  if (coverMatch && request.method === "PUT") {
+    return replaceCover(env.DB, env.COVERS, request, decodeURIComponent(coverMatch[1]));
   }
 
   const readingMatch = /^\/api\/books\/([^/]+)\/reading$/.exec(url.pathname);

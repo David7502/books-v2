@@ -1,13 +1,15 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { validateNewBook, type NewBookInput } from "./add-book.ts";
 import type { Ownership } from "./demo-books.ts";
+import { coverFileError } from "../worker/validate-cover.ts";
 
 type BookFormProps = {
   initial: NewBookInput;
   submitLabel: string;
   note: string;
   showRead?: boolean;
-  onSubmitBook: (book: NewBookInput) => Promise<void>;
+  currentCoverUrl?: string | null;
+  onSubmitBook: (book: NewBookInput, cover: File | null) => Promise<void>;
 };
 
 const fieldError = {
@@ -20,17 +22,33 @@ export default function BookForm({
   submitLabel,
   note,
   showRead = false,
+  currentCoverUrl = null,
   onSubmitBook,
 }: BookFormProps) {
   const [title, setTitle] = useState(initial.title);
   const [author, setAuthor] = useState(initial.author);
   const [ownership, setOwnership] = useState<Ownership>(initial.ownership);
   const [read, setRead] = useState(initial.read === true);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [errors, setErrors] = useState<Array<"title" | "author">>([]);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const authorRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!coverFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(coverFile);
+    setPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [coverFile]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,6 +61,11 @@ export default function BookForm({
       ownership,
       read: showRead ? read : false,
     });
+
+    if (coverError) {
+      setSubmitError(coverError);
+      return;
+    }
 
     if (!result.ok) {
       setSubmitError(null);
@@ -58,7 +81,7 @@ export default function BookForm({
     setSaving(true);
     setSubmitError(null);
     try {
-      await onSubmitBook(result.book);
+      await onSubmitBook(result.book, coverFile);
       setErrors([]);
     } catch (error) {
       setSubmitError(
@@ -110,6 +133,35 @@ export default function BookForm({
           <p id="book-author-error" className="add-error">
             {fieldError.author}
           </p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="book-cover">Couverture, facultative</label>
+        <input
+          id="book-cover"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(event) => {
+            const file = event.target.files?.[0] ?? null;
+            if (!file) {
+              setCoverFile(null);
+              setCoverError(null);
+              return;
+            }
+            const error = coverFileError(file);
+            setCoverError(error);
+            setCoverFile(error ? null : file);
+            setSubmitError(null);
+          }}
+        />
+        <p className="add-note">JPEG, PNG ou WebP. 2 Mo maximum.</p>
+        {coverError ? <p className="add-error">{coverError}</p> : null}
+        {previewUrl ? (
+          <img className="cover" src={previewUrl} alt="Aperçu de la couverture" />
+        ) : currentCoverUrl ? (
+          <img className="cover" src={currentCoverUrl} alt="Couverture actuelle" />
+        ) : (
+          <p className="cover-placeholder">Pas de couverture</p>
         )}
       </div>
       <fieldset>

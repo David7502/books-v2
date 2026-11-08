@@ -6,7 +6,7 @@ Application de livres, construite une étape à la fois. L'interface affiche les
 
 Deux idées restent séparées, dans deux tableaux du même fichier de démo. Rien n'est enregistré.
 
-- un **livre** (`books`) : titre, auteur en texte simple, possession (`owned`, `wishlist` ou `none`), et plus tard une couverture ;
+- un **livre** (`books`) : titre, auteur en texte simple, possession (`owned`, `wishlist` ou `none`), et la clé d'une couverture facultative ;
 - une **lecture** (`readings`) : une fiche par livre, avec un statut, des dates facultatives, un lieu et une note.
 
 Posséder un livre et l'avoir lu sont deux faits différents. Chaque livre a au plus une fiche de lecture.
@@ -76,7 +76,7 @@ npm run preview
 
 `demoBooks` est un **tableau** : une liste ordonnée. Chaque case est un **objet**, un seul livre, avec ses champs côte à côte (`id`, `title`, `author`, `ownership`).
 
-Le **type** `Book` décrit cet objet. TypeScript refuse un livre sans titre, ou une possession autre que `owned`, `wishlist` ou `none`. L'auteur est un texte. `coverKey` est facultatif : aucun livre de démo ne l'a, donc chaque carte affiche « Pas de couverture » sans télécharger d'image.
+Le **type** `Book` décrit cet objet. TypeScript refuse un livre sans titre, ou une possession autre que `owned`, `wishlist` ou `none`. L'auteur est un texte. `coverKey` est facultatif. Sans clé, la carte affiche « Pas de couverture ». Avec une clé, elle demande l'image au Worker.
 
 La possession et la lecture restent deux faits. `owned` affiche « j’ai ». `wishlist` affiche « je veux ». `none` n'affiche rien : ce n'est pas « j’ai lu ». « j’ai lu » vient seulement d'une lecture dont le `status` est `read`.
 
@@ -112,7 +112,7 @@ On n'ajoute pas de bibliothèque de routes. L'accueil est `/`, l'ajout `/ajouter
 
 Le bouton **Ajouter un livre** de l'accueil mène à `/ajouter`. **Modifier**, sur une carte, mène à `/livres/…/modifier`. Les deux écrans utilisent le même `BookForm`. À la création, les champs commencent vides. À la modification, ils sont remplis avec le livre trouvé par son `id`.
 
-`onSubmitBook` est la fonction fournie par `App`. Pour un ajout, elle fabrique un nouvel `id`. Pour une modification, elle garde l'`id`, la couverture et les lectures : seul le titre, l'auteur et la possession changent.
+`onSubmitBook` est la fonction fournie par `App`. Pour un ajout, le Worker fabrique un nouvel `id`. Pour une modification, il garde l'`id` et les lectures : le titre, l'auteur et la possession changent. La couverture ne change que si une nouvelle image est choisie.
 
 `onSubmit` reçoit l'événement du formulaire. `preventDefault()` empêche le navigateur de recharger la page. La touche Entrée dans un champ envoie ce même événement.
 
@@ -140,6 +140,16 @@ L'accueil montre quatre boutons : **Tous**, **Lu**, **Je veux**, **J’ai**. Le 
 
 Le bouton pressé a `aria-pressed="true"` et un contour. La liste en dessous applique ce filtre et la recherche titre ou auteur. Le nombre sous **Livres** est celui des cartes affichées. S'il ne reste rien, le message le dit, et **Revenir à Tous** enlève le filtre et la recherche. **Effacer**, à côté du champ, n'enlève que le texte.
 
+## Couvertures
+
+Le formulaire d'ajout et celui de modification ont un champ image facultatif. JPEG, PNG ou WebP, 2 Mo maximum. Le navigateur montre un aperçu avant l'envoi. Sans image, la carte dit « Pas de couverture ».
+
+Le Worker ne se fie pas au nom du fichier. Il lit les premiers octets. S'ils ne sont pas ceux d'un JPEG, d'un PNG ou d'un WebP, ou si le type annoncé ne correspond pas, il refuse et ne change rien. Une image acceptée est écrite dans le seau R2 `COVERS`, sous une clé `covers/` suivie d'un identifiant au hasard. D1 range seulement cette clé dans `cover_key`, qui existait déjà : aucune migration. La carte charge ensuite `/api/books/identifiant/cover`. Le Worker relit la clé, reprend l'objet, et répond avec son type et `nosniff`.
+
+`remote` vaut `false` pour ce seau comme pour D1. `npm run dev` simule R2 dans `.wrangler/`, ignoré par Git. Ne lance pas `wrangler r2 bucket create` : cela créerait un seau chez Cloudflare. Ne déploie pas.
+
+Remplacer une couverture écrit d'abord le nouvel objet. La clé dans D1 ne change qu'ensuite. Si cette écriture échoue, l'ancienne couverture reste. Un ajout avec image et **J’ai lu** part dans la même requête : si l'image est refusée, le livre n'est pas créé.
+
 ## La base locale
 
 Le navigateur appelle `/api/books`. Le Worker lit `env.DB`, exécute du SQL dont les valeurs viennent de `?` (elles ne sont pas collées dans la phrase SQL), puis renvoie du JSON. React range ce JSON dans son état.
@@ -157,6 +167,7 @@ D1 est le service de base de Cloudflare. Ici, `remote` vaut `false` et aucun ide
 - `phare` laisse « La brume du phare », avec « j’ai » et « j’ai lu ». `memoires` trouve « Mémoires d'un cartographe distrait ». `zzzz` affiche « Aucun livre » et une phrase qui dit qu'aucun livre ne correspond.
 - Un titre ou un auteur vide est refusé. Ajouter un livre avec **J’ai lu** et sans cocher « j’ai » affiche seulement « j’ai lu ». Ajouter avec « j’ai » sans cette case n'affiche pas « j’ai lu ». Les deux ensemble affichent les deux. Le livre reste après rechargement.
 - Les boutons **Tous**, **Lu**, **Je veux** et **J’ai** montrent des totaux qui ne changent pas quand on cherche. **Lu** puis une recherche ne garde que les livres terminés qui correspondent.
+- Une couverture JPEG, PNG ou WebP d'au plus 2 Mo s'affiche sur la carte et après rechargement. Un SVG, une page HTML, ou une image trop lourde est refusé. Le livre sans image garde « Pas de couverture ».
 - `npm test`, `npm run typecheck` et `npm run build` se terminent sans erreur.
 
 ## Secrets
@@ -165,4 +176,4 @@ Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom 
 
 ## Exercice
 
-Avec `npm run dev`, ajoute un livre en cochant seulement **J’ai lu**. La carte montre « j’ai lu », sans « j’ai ». Le bouton **Lu** le compte. **J’ai** ne le compte pas. Aucune migration n'est nécessaire pour cette étape.
+Avec `npm run dev`, ajoute un livre avec une petite image PNG et **J’ai lu**. La carte montre l'image et « j’ai lu ». Recharge : l'image est encore là. Ouvre **Modifier**, choisis une autre image, enregistre. L'ancienne ne disparaît que si la nouvelle est acceptée. Aucune migration, et pas de commande `wrangler r2 bucket create`.

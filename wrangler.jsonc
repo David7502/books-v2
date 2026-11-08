@@ -24,6 +24,11 @@
       "remote": false
     }
   ],
+  "vars": {
+    "TEAM_DOMAIN": "",
+    "POLICY_AUD": "",
+    "ACCESS_LOCAL_EXEMPT": ""
+  },
   "r2_buckets": [
     {
       "binding": "COVERS",

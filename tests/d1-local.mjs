@@ -64,6 +64,8 @@ function startServer() {
       persist,
       "--show-interactive-dev-session",
       "false",
+      "--var",
+      "ACCESS_LOCAL_EXEMPT:dev-only",
     ],
     { stdio: ["ignore", "pipe", "pipe"], env: process.env },
   );

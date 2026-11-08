@@ -23,5 +23,12 @@
       "database_name": "books-v2",
       "remote": false
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "COVERS",
+      "bucket_name": "books-v2-covers",
+      "remote": false
+    }
   ]
 }

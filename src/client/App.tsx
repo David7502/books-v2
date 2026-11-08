@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { type NewBookInput } from "./add-book.ts";
-import { ApiError, createBook, fetchBooks, updateBook, type LibraryBook } from "./api.ts";
+import {
+  ApiError,
+  createBook,
+  createBookWithCover,
+  fetchBooks,
+  updateBook,
+  uploadCover,
+  type LibraryBook,
+} from "./api.ts";
 import BookCard from "./BookCard.tsx";
 import BookForm from "./BookForm.tsx";
 import { editBookId, readingBookId } from "./path.ts";
@@ -153,21 +161,29 @@ export default function App() {
     navigate("/");
   }
 
-  async function addBook(input: NewBookInput) {
+  async function addBook(input: NewBookInput, cover: File | null) {
     loadGeneration.current += 1;
-    const book = await createBook(input);
+    const book = cover ? await createBookWithCover(input, cover) : await createBook(input);
     setBooks((previous) => [...previous.filter((item) => item.id !== book.id), book]);
     setLoadError(null);
     setLoading(false);
     remember("added", book.id);
   }
 
-  async function saveBook(id: string, input: NewBookInput) {
+  async function saveBook(id: string, input: NewBookInput, cover: File | null) {
     loadGeneration.current += 1;
     const book = await updateBook(id, input);
     setBooks((previous) => previous.map((item) => (item.id === book.id ? book : item)));
     setLoadError(null);
     setLoading(false);
+    if (!cover) {
+      remember("updated", id);
+      return;
+    }
+    const withCover = await uploadCover(id, cover);
+    setBooks((previous) =>
+      previous.map((item) => (item.id === withCover.id ? withCover : item)),
+    );
     remember("updated", id);
   }
 
@@ -272,7 +288,12 @@ export default function App() {
           }}
           submitLabel="Enregistrer"
           note={memoryNote}
-          onSubmitBook={(input) => saveBook(editing.id, input)}
+          currentCoverUrl={
+            editing.coverKey
+              ? `/api/books/${encodeURIComponent(editing.id)}/cover?v=${encodeURIComponent(editing.coverKey)}`
+              : null
+          }
+          onSubmitBook={(input, cover) => saveBook(editing.id, input, cover)}
         />
       </main>
     );

@@ -1,8 +1,8 @@
-import { useEffect, useState, type MouseEvent } from "react";
-import { appendBook, createBook, replaceBook, type NewBookInput } from "./add-book.ts";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { type NewBookInput } from "./add-book.ts";
+import { ApiError, createBook, fetchBooks, updateBook, type LibraryBook } from "./api.ts";
 import BookCard from "./BookCard.tsx";
 import BookForm from "./BookForm.tsx";
-import { demoBooks, hasCompletedReading, type Book } from "./demo-books.ts";
 import { editBookId } from "./path.ts";
 import { bookMatchesQuery, formatResultCount } from "./search.ts";
 import { usePath } from "./use-path.ts";
@@ -22,7 +22,7 @@ const emptyBook: NewBookInput = {
 };
 
 const memoryNote =
-  "Ceci reste dans la mémoire de cette visite. Un rechargement l'efface. Rien n'est envoyé.";
+  "Ceci est enregistré dans la base locale. Un rechargement le garde. Rien n'est envoyé chez Cloudflare.";
 
 function PageLink({
   href,
@@ -57,7 +57,11 @@ function PageLink({
   );
 }
 
-function pageTitle(path: string, editing: Book | null, editingId: string | null): string {
+function pageTitle(
+  path: string,
+  editing: LibraryBook | null,
+  editingId: string | null,
+): string {
   if (path === "/") {
     return "Bibliothèque";
   }
@@ -73,10 +77,13 @@ function pageTitle(path: string, editing: Book | null, editingId: string | null)
 }
 
 export default function App() {
-  const [books, setBooks] = useState(() => [...demoBooks]);
+  const [books, setBooks] = useState<LibraryBook[]>([]);
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [path, navigate] = usePath();
+  const loadGeneration = useRef(0);
   const visibleBooks = books.filter((book) => bookMatchesQuery(book, query));
   const empty = visibleBooks.length === 0;
   const editingId = editBookId(path);
@@ -92,6 +99,32 @@ export default function App() {
     document.getElementById("page-title")?.focus();
   }, [path, editing, editingId]);
 
+  async function loadBooks() {
+    const generation = ++loadGeneration.current;
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const next = await fetchBooks();
+      if (generation !== loadGeneration.current) {
+        return;
+      }
+      setBooks(next);
+      setLoading(false);
+    } catch (error) {
+      if (generation !== loadGeneration.current) {
+        return;
+      }
+      setLoadError(
+        error instanceof ApiError ? error.message : "La liste n'a pas pu être lue.",
+      );
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadBooks();
+  }, []);
+
   function remember(kind: Notice["kind"], id: string) {
     setNotice({
       kind,
@@ -102,14 +135,21 @@ export default function App() {
     navigate("/");
   }
 
-  function addBook(input: NewBookInput) {
-    const book = createBook(input, crypto.randomUUID());
-    setBooks((previous) => appendBook(previous, book));
+  async function addBook(input: NewBookInput) {
+    loadGeneration.current += 1;
+    const book = await createBook(input);
+    setBooks((previous) => [...previous.filter((item) => item.id !== book.id), book]);
+    setLoadError(null);
+    setLoading(false);
     remember("added", book.id);
   }
 
-  function saveBook(id: string, input: NewBookInput) {
-    setBooks((previous) => replaceBook(previous, id, input));
+  async function saveBook(id: string, input: NewBookInput) {
+    loadGeneration.current += 1;
+    const book = await updateBook(id, input);
+    setBooks((previous) => previous.map((item) => (item.id === book.id ? book : item)));
+    setLoadError(null);
+    setLoading(false);
     remember("updated", id);
   }
 
@@ -133,6 +173,29 @@ export default function App() {
   }
 
   if (editingId) {
+    if (loading) {
+      return (
+        <main>
+          <h1 id="page-title" tabIndex={-1}>
+            Modifier un livre
+          </h1>
+          <p>Chargement des livres…</p>
+        </main>
+      );
+    }
+    if (loadError) {
+      return (
+        <main>
+          <h1 id="page-title" tabIndex={-1}>
+            Modifier un livre
+          </h1>
+          <p>{loadError}</p>
+          <button type="button" className="show-all" onClick={() => void loadBooks()}>
+            Réessayer
+          </button>
+        </main>
+      );
+    }
     if (!editing) {
       return (
         <main>
@@ -167,9 +230,7 @@ export default function App() {
           }}
           submitLabel="Enregistrer"
           note={memoryNote}
-          onSubmitBook={(input) => {
-            saveBook(editing.id, input);
-          }}
+          onSubmitBook={(input) => saveBook(editing.id, input)}
         />
       </main>
     );
@@ -195,10 +256,11 @@ export default function App() {
         Bibliothèque
       </h1>
       <p className="banner">
-        Les quatre livres du départ sont inventés. Un livre que tu ajoutes ou
-        modifies reste dans la mémoire de cette visite et disparaît au
-        rechargement. Rien n'est envoyé. Les libellés et l'aspect sont
-        provisoires.
+        Ces livres sont enregistrés dans la base locale de cet ordinateur. Ils
+        restent après un rechargement et après un redémarrage du serveur de
+        développement. Ils ne sont pas copiés sur un autre ordinateur, ni chez
+        Cloudflare. Ne déploie pas cette application tant que l'accès n'est pas
+        protégé. Les libellés et l'aspect sont provisoires.
       </p>
       <p className="home-actions">
         <PageLink href="/ajouter" className="add-link" navigate={navigate}>
@@ -246,16 +308,31 @@ export default function App() {
         </p>
       )}
       <h2>Livres</h2>
-      <p id="search-count" role="status">
-        {formatResultCount(visibleBooks.length)}
-      </p>
-      {empty ? (
+      {loading ? <p>Chargement des livres…</p> : null}
+      {loadError ? (
+        <p>
+          {loadError}{" "}
+          <button type="button" className="show-all" onClick={() => void loadBooks()}>
+            Réessayer
+          </button>
+        </p>
+      ) : null}
+      {!loading && !loadError ? (
+        <p id="search-count" role="status">
+          {formatResultCount(visibleBooks.length)}
+        </p>
+      ) : null}
+      {!loading && !loadError && books.length === 0 ? (
+        <p>Aucun livre pour l'instant. Utilise Ajouter un livre.</p>
+      ) : null}
+      {!loading && !loadError && books.length > 0 && empty ? (
         <p id="search-empty">Aucun livre ne correspond à cette recherche.</p>
-      ) : (
+      ) : null}
+      {!loading && !loadError && !empty ? (
         <ul className="book-list">
           {visibleBooks.map((book) => (
             <li key={book.id}>
-              <BookCard book={book} completed={hasCompletedReading(book.id)}>
+              <BookCard book={book} completed={book.completed}>
                 <PageLink
                   href={`/livres/${encodeURIComponent(book.id)}/modifier`}
                   className="edit-link"
@@ -267,7 +344,7 @@ export default function App() {
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </main>
   );
 }

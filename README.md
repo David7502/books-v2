@@ -190,6 +190,8 @@ Wrangler l'utilise pour `npm run dev` et `npm run preview`, et ne l'envoie pas l
 
 Aucune migration. Aucune commande `wrangler deploy`, `wrangler login` ou Access.
 
+Le premier outil MCP est un `ping` qui ne lit pas les livres. Le guide est dans `docs/mcp.md`.
+
 ## Secrets
 
 Ce dépôt ne contient aucun jeton, mot de passe ni fichier `.dev.vars`. Le nom `books-v2` dans `wrangler.jsonc` est seulement le nom du Worker. Le bloc `observability` prépare des journaux pour une future mise en ligne. En local, rien n'est envoyé.

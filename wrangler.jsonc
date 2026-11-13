@@ -15,7 +15,7 @@
   },
   "assets": {
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/mcp"]
   },
   "d1_databases": [
     {
@@ -27,7 +27,10 @@
   "vars": {
     "TEAM_DOMAIN": "",
     "POLICY_AUD": "",
-    "ACCESS_LOCAL_EXEMPT": ""
+    "ACCESS_LOCAL_EXEMPT": "",
+    "MCP_HOSTNAME": "",
+    "MCP_POLICY_AUD": "",
+    "MCP_SERVICE_CLIENT_ID": ""
   },
   "r2_buckets": [
     {

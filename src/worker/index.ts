@@ -1,4 +1,5 @@
 import { guardApi } from "./access.ts";
+import { handleMcpRequest } from "./mcp.ts";
 import { validateCoverBytes, type CoverType } from "./validate-cover.ts";
 import { validateReadingInput } from "./validate-reading.ts";
 import { validateBookInput, validateCreateBook } from "./validate.ts";
@@ -518,7 +519,16 @@ async function saveReadingSheet(
   return readReadingSheet(db, bookId);
 }
 
-async function route(request: Request, env: Env): Promise<Response> {
+async function route(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+): Promise<Response> {
+  const mcp = await handleMcpRequest(request, env, ctx);
+  if (mcp) {
+    return mcp;
+  }
+
   const denied = await guardApi(request, env);
   if (denied) {
     return denied;
@@ -565,9 +575,9 @@ async function route(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx?): Promise<Response> {
     try {
-      return await route(request, env);
+      return await route(request, env, ctx);
     } catch (error) {
       console.error(
         JSON.stringify({

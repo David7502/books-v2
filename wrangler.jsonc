@@ -31,7 +31,8 @@
 	"env": {
 	  "production": {
 		"routes": [
-		  { "pattern": "books.davidguillo.fr", "custom_domain": true }
+		  { "pattern": "books.davidguillo.fr", "custom_domain": true}, 
+		  { "pattern": "mcp.davidguillo.fr", "custom_domain": true }
 		],
 		"workers_dev": false,
 		"preview_urls": false,
@@ -51,9 +52,9 @@
 		  "TEAM_DOMAIN": "https://davidguillo.cloudflareaccess.com",
 		  "POLICY_AUD": "623528a95f513173636ed6cbdc65cb293ea0d4847321db448871cd7598492902",
 		  "ACCESS_LOCAL_EXEMPT": "",
-		  "MCP_HOSTNAME": "",
-		  "MCP_POLICY_AUD": "",
-		  "MCP_SERVICE_CLIENT_ID": ""
+		  "MCP_HOSTNAME": "mcp.davidguillo.fr",
+		  "MCP_POLICY_AUD": "35f57a73acc4fb5629dccaf0c78f557fe3638ca529275ab0205956ec54dcb549",
+		  "MCP_SERVICE_CLIENT_ID": "9075cd2821f716cdc03206e19b22249e.access"
 		},
 		"r2_buckets": [
 		  { "binding": "COVERS", "bucket_name": "books-prod", "remote": true }

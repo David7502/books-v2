@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload, type JWTVerifyGetKey } from "jose";
 import { parseAudience, parseIssuer } from "./access.ts";
+import { formatSearch, searchBooks, searchBooksInput } from "./search-books.ts";
 
 export const MCP_MAX_BODY_BYTES = 32 * 1024;
 
@@ -114,7 +115,7 @@ function keysFor(issuer: string): JWTVerifyGetKey {
   return created;
 }
 
-function createPingServer() {
+function createBookServer(env: { DB: D1Database }) {
   const server = new McpServer({
     name: "books-v2",
     version: "0.1.0",
@@ -129,10 +130,24 @@ function createPingServer() {
       content: [{ type: "text", text: "pong" }],
     }),
   );
+  server.registerTool(
+    "search_books",
+    {
+      title: "Chercher des livres",
+      description:
+        "Cherche des livres par titre ou auteur. Le filtre status vaut all, owned (j’ai), read (j’ai lu) ou wishlist (je veux). Lecture seule : rien n’est modifié, et aucune couverture n’est lue.",
+      inputSchema: searchBooksInput,
+    },
+    async (input) => {
+      const result = await searchBooks(env.DB, input);
+      return {
+        content: [{ type: "text", text: formatSearch(result) }],
+        structuredContent: result,
+      };
+    },
+  );
   return server;
 }
-
-const mcpHandler = createMcpHandler(createPingServer);
 
 function executionContext(ctx: ExecutionContext | undefined): ExecutionContext {
   if (ctx) {
@@ -196,5 +211,6 @@ export async function handleMcpRequest(
     return jsonError("Accès refusé.", 401);
   }
 
-  return mcpHandler(request, env, executionContext(ctx));
+  const handler = createMcpHandler(() => createBookServer(env as { DB: D1Database }));
+  return handler(request, env, executionContext(ctx));
 }

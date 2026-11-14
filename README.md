@@ -190,7 +190,7 @@ Wrangler l'utilise pour `npm run dev` et `npm run preview`, et ne l'envoie pas l
 
 Aucune migration. Aucune commande `wrangler deploy`, `wrangler login` ou Access.
 
-Le premier outil MCP est un `ping` qui ne lit pas les livres. Le guide est dans `docs/mcp.md`.
+Les outils MCP sont `ping` et `search_books`. La recherche est en lecture seule. Le guide est dans `docs/mcp.md`.
 
 ## Secrets
 

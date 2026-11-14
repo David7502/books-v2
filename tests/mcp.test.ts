@@ -142,7 +142,7 @@ const tools = (await readMcp(listed)) as {
 };
 assert.deepEqual(
   tools.result?.tools?.map((tool) => tool.name),
-  ["ping"],
+  ["ping", "search_books"],
 );
 
 const called = await callWorker(

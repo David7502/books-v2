@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload, type JWTVerifyGetKey } from "jose";
 import { parseAudience, parseIssuer } from "./access.ts";
+import { addBook, addBookInput, formatAdd } from "./add-book.ts";
 import { formatSearch, searchBooks, searchBooksInput } from "./search-books.ts";
 
 export const MCP_MAX_BODY_BYTES = 32 * 1024;
@@ -135,14 +136,46 @@ function createBookServer(env: { DB: D1Database }) {
     {
       title: "Chercher des livres",
       description:
-        "Cherche des livres par titre ou auteur. Le filtre status vaut all, owned (j’ai), read (j’ai lu) ou wishlist (je veux). Lecture seule : rien n’est modifié, et aucune couverture n’est lue.",
+        "Cherche des livres par titre, auteur ou collection. Le filtre status vaut all, owned (j’ai), read (j’ai lu) ou wishlist (je veux). category filtre Roman, Essai, Bande dessinée, Philosophie ou Autre. Lecture seule : rien n’est modifié, et aucune couverture n’est lue.",
       inputSchema: searchBooksInput,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
     },
     async (input) => {
       const result = await searchBooks(env.DB, input);
       return {
         content: [{ type: "text", text: formatSearch(result) }],
         structuredContent: result,
+      };
+    },
+  );
+  server.registerTool(
+    "add_book",
+    {
+      title: "Ajouter un livre",
+      description:
+        "Ajoute un livre. title et author sont obligatoires, 200 caractères au plus. ownership vaut owned (j’ai), wishlist (je veux) ou none. Sans ownership, le livre n’a aucun de ces deux liens. read à true crée une fiche Terminé (j’ai lu). category vaut novel, essay, comic, philosophy ou other. collection est un texte libre, 80 caractères au plus. Si le même titre et le même auteur existent déjà, rien n’est inséré : le livre déjà là est renvoyé. Aucune couverture n’est écrite.",
+      inputSchema: addBookInput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+      },
+    },
+    async (input) => {
+      const result = await addBook(env.DB, input);
+      if (!result.ok) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: result.error }],
+        };
+      }
+      return {
+        content: [{ type: "text", text: formatAdd(result) }],
+        structuredContent: { created: result.created, book: result.book },
       };
     },
   );

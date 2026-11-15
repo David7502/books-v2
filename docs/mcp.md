@@ -38,10 +38,11 @@ Ne mets jamais le Client Secret dans ce fichier, dans Git, ni dans une conversat
 
 ## Chercher des livres
 
-`search_books` accepte quatre arguments, tous facultatifs :
+`search_books` accepte cinq arguments, tous facultatifs :
 
 - `query` : un texte, au plus 200 caractères, comparé au titre, à l'auteur et à la collection sans tenir compte des majuscules. La table n'a pas d'ISBN. Les signes `%` et `_` sont cherchés comme des lettres, pas comme des jokers.
 - `status` : `all`, `owned` (j'ai), `read` (j'ai lu) ou `wishlist` (je veux).
+- `to_read` : `true` ne garde que les livres `owned` sans fiche Terminé. C'est le même calcul que le bouton **À lire** de l'accueil. `false` ou absent ne filtre pas.
 - `category` : `novel` (Roman), `essay` (Essai), `comic` (Bande dessinée), `philosophy` (Philosophie) ou `other` (Autre). Sans cet argument, toutes les catégories restent.
 - `limit` : de 1 à 50. Sans limite, 20 livres au plus sont listés. Le total indiqué compte tous ceux qui correspondent.
 

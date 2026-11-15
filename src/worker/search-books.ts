@@ -8,6 +8,7 @@ export const SEARCH_MAX_QUERY = 200;
 export const searchBooksInput = z.object({
   query: z.string().trim().max(SEARCH_MAX_QUERY).optional(),
   status: z.enum(["all", "owned", "read", "wishlist"]).optional(),
+  to_read: z.boolean().optional(),
   category: z.enum(CATEGORIES).optional(),
   limit: z.number().int().min(1).max(SEARCH_MAX_LIMIT).optional(),
 });
@@ -77,6 +78,10 @@ function filters(input: SearchBooksInput): { where: string; params: unknown[] } 
   if (input.status === "read") {
     clauses.push("readings.status = ?");
     params.push("read");
+  }
+  if (input.to_read === true) {
+    clauses.push("(books.ownership = ? AND (readings.status IS NULL OR readings.status != ?))");
+    params.push("owned", "read");
   }
   return {
     where: clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "",

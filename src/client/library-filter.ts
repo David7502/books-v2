@@ -1,6 +1,6 @@
 import { bookMatchesQuery, normalizeSearch } from "./search.ts";
 
-export const LIBRARY_FILTERS = ["all", "read", "wishlist", "owned"] as const;
+export const LIBRARY_FILTERS = ["all", "read", "wishlist", "owned", "to_read"] as const;
 
 export type LibraryFilter = (typeof LIBRARY_FILTERS)[number];
 
@@ -18,6 +18,7 @@ const filterLabel: Record<LibraryFilter, string> = {
   read: "Lu",
   wishlist: "Je veux",
   owned: "J’ai",
+  to_read: "À lire",
 };
 
 export function libraryFilterLabel(filter: LibraryFilter): string {
@@ -37,6 +38,9 @@ export function bookMatchesFilter(
   if (filter === "wishlist") {
     return book.ownership === "wishlist";
   }
+  if (filter === "to_read") {
+    return book.ownership === "owned" && !book.completed;
+  }
   return book.completed;
 }
 
@@ -46,6 +50,7 @@ export function libraryCounts(books: readonly { ownership: string; completed: bo
     read: books.filter((book) => book.completed).length,
     wishlist: books.filter((book) => book.ownership === "wishlist").length,
     owned: books.filter((book) => book.ownership === "owned").length,
+    to_read: books.filter((book) => book.ownership === "owned" && !book.completed).length,
   };
 }
 

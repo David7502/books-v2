@@ -1,6 +1,9 @@
-# Premier pas MCP : un ping
+# MCP : ping et recherche
 
-Cette étape ajoute une adresse `/mcp` sur le même Worker que le site. Elle ne lit ni n'écrit aucun livre. L'outil s'appelle `ping` et répond `pong`.
+L'adresse `/mcp` est sur le même Worker que le site. Deux outils :
+
+- `ping` répond `pong`. Il ne lit rien.
+- `search_books` cherche des livres dans D1. Il ne fait que des `SELECT`. Il n'écrit rien, et il ne lit pas les couvertures.
 
 Le site humain ne change pas. Son audience Access reste `POLICY_AUD`. Le ping a une audience à part, `MCP_POLICY_AUD`, et un nom d'hôte à part, `MCP_HOSTNAME`.
 
@@ -32,24 +35,50 @@ Dans `assets.run_worker_first`, garde `/api/*` et ajoute `/mcp` :
 
 Ne mets jamais le Client Secret dans ce fichier, dans Git, ni dans une conversation. `MCP_SERVICE_CLIENT_ID` est l'identifiant public du jeton, pas le secret. `ACCESS_LOCAL_EXEMPT` vide ne donne aucun accès. La valeur `dev-only` ne doit jamais aller dans le nuage.
 
+## Chercher des livres
+
+`search_books` accepte trois arguments, tous facultatifs :
+
+- `query` : un texte, au plus 200 caractères, comparé au titre et à l'auteur sans tenir compte des majuscules. La table n'a pas d'ISBN. Les signes `%` et `_` sont cherchés comme des lettres, pas comme des jokers.
+- `status` : `all`, `owned` (j'ai), `read` (j'ai lu) ou `wishlist` (je veux).
+- `limit` : de 1 à 50. Sans limite, 20 livres au plus sont listés. Le total indiqué compte tous ceux qui correspondent.
+
+La réponse a un texte lisible et le même résultat en données structurées : identifiant, titre, auteur, possession, lecture, dates et note.
+
 ## Essai local, sans secret
 
 ```powershell
 npm test
 ```
 
-Ce test signe des jetons de laboratoire. Il joue l'échange MCP `initialize`, `tools/list` et `tools/call`. Il refuse un jeton absent, forgé, expiré, d'un mauvais émetteur, d'une mauvaise audience, d'une autre identité, un en-tête d'identifiant sans jeton, un navigateur, et un mauvais nom d'hôte. Il vérifie aussi que la base et R2 ne sont pas touchés.
+Ce test signe des jetons de laboratoire. Il joue l'échange MCP `initialize`, `tools/list` et `tools/call` pour `ping` et `search_books`. Il refuse un jeton absent, forgé, expiré, d'un mauvais émetteur, d'une mauvaise audience, d'une autre identité, un en-tête d'identifiant sans jeton, un navigateur, et un mauvais nom d'hôte. La recherche est essayée sur une base en mémoire : aucun `INSERT` ni accès R2.
 
-## Plus tard, un essai cloud séparé
+Pour appeler le serveur déjà en ligne, le secret reste dans des variables, pas dans le fichier ni dans le chat.
 
-Pas maintenant, et pas sur le site que les gens ouvrent dans le navigateur.
+```powershell
+@'
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_books","arguments":{"query":"brume","status":"read","limit":5}}}
+'@ | Set-Content -Encoding utf8 search.json
 
-1. Choisis un nom d'hôte réservé au MCP, par exemple `mcp.<ton-domaine>`.
-2. Crée une application Access distincte, en Service Auth, pour ce nom d'hôte seulement.
-3. Autorise un seul jeton de service. Copie son Client ID dans `MCP_SERVICE_CLIENT_ID`, et l'audience de cette application dans `MCP_POLICY_AUD`.
-4. Mets le nom d'hôte dans `MCP_HOSTNAME`.
-5. Garde le Client Secret dans le client qui appellera le serveur, pas dans le dépôt.
+curl.exe -s "https://mcp.davidguillo.fr/mcp" `
+  -H "Content-Type: application/json" `
+  -H "Accept: application/json, text/event-stream" `
+  -H "CF-Access-Client-Id: $env:MCP_CLIENT_ID" `
+  -H "CF-Access-Client-Secret: $env:MCP_CLIENT_SECRET" `
+  --data-binary "@search.json"
+```
 
-Ce dépôt n'a pas été connecté à Grok. Cette étape ne prouve pas encore le trajet complet jusqu'au bot.
+Le même modèle sert pour `ping` : dans le JSON, `"name":"ping"` et `"arguments":{}`.
 
-Les secrets ne vont ni dans Git, ni dans le chat, ni dans un cookie d'une connexion humaine.
+## Après fusion
+
+Le nom d'hôte MCP, l'audience et l'identifiant client sont déjà en place. Cette étape ne change pas `wrangler.jsonc`. Le ping a déjà répondu `pong` depuis Grok. `search_books` emprunte le même chemin dès que le nouveau code est déployé.
+
+```powershell
+$env:CLOUDFLARE_ENV = "production"
+npm run build
+npx wrangler deploy
+Remove-Item Env:CLOUDFLARE_ENV
+```
+
+Ne remplace pas `TEAM_DOMAIN`, `POLICY_AUD`, ni les trois variables MCP. Le Client Secret reste dans Grok, pas dans Git, pas dans le chat, et pas dans un cookie de connexion humaine. `dev-only` ne va jamais dans le nuage.

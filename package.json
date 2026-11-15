@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "wrangler types && tsc -b --pretty false",
-    "test": "node --experimental-strip-types tests/search.test.ts && node --experimental-strip-types tests/add-book.test.ts && node --experimental-strip-types tests/path.test.ts && node --experimental-strip-types tests/edit-book.test.ts && node --experimental-strip-types tests/validate-book.test.ts && node --experimental-strip-types tests/validate-reading.test.ts && node --experimental-strip-types tests/library-filter.test.ts && node --experimental-strip-types tests/validate-cover.test.ts && node --experimental-strip-types tests/access.test.ts && node --experimental-strip-types tests/mcp.test.ts",
+    "test": "node --experimental-strip-types tests/search.test.ts && node --experimental-strip-types tests/add-book.test.ts && node --experimental-strip-types tests/path.test.ts && node --experimental-strip-types tests/edit-book.test.ts && node --experimental-strip-types tests/validate-book.test.ts && node --experimental-strip-types tests/validate-reading.test.ts && node --experimental-strip-types tests/library-filter.test.ts && node --experimental-strip-types tests/validate-cover.test.ts && node --experimental-strip-types tests/access.test.ts && node --experimental-strip-types tests/mcp.test.ts && node --experimental-strip-types tests/mcp-search.test.ts",
     "preview": "vite preview",
     "db:migrate": "wrangler d1 migrations apply books-v2 --local",
     "db:seed": "wrangler d1 execute books-v2 --local --file seed/demo.sql",

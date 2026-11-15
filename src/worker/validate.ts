@@ -2,13 +2,60 @@ export const OWNERSHIPS = ["owned", "wishlist", "none"] as const;
 
 export type Ownership = (typeof OWNERSHIPS)[number];
 
+export const CATEGORIES = ["novel", "essay", "comic", "philosophy", "other"] as const;
+
+export type BookCategory = (typeof CATEGORIES)[number];
+
+export const CATEGORY_LABELS: Record<BookCategory, string> = {
+  novel: "Roman",
+  essay: "Essai",
+  comic: "Bande dessinée",
+  philosophy: "Philosophie",
+  other: "Autre",
+};
+
+export const COLLECTION_MAX = 80;
+
 export type BookInput = {
   title: string;
   author: string;
   ownership: Ownership;
+  category: BookCategory | null;
+  collection: string | null;
 };
 
 const MAX_TEXT = 200;
+
+function parseCategory(
+  value: unknown,
+): { ok: true; category: BookCategory | null } | { ok: false; error: string } {
+  if (value === undefined || value === null || value === "") {
+    return { ok: true, category: null };
+  }
+  if (typeof value !== "string" || !CATEGORIES.includes(value as BookCategory)) {
+    return { ok: false, error: "La catégorie n'est pas reconnue." };
+  }
+  return { ok: true, category: value as BookCategory };
+}
+
+function parseCollection(
+  value: unknown,
+): { ok: true; collection: string | null } | { ok: false; error: string } {
+  if (value === undefined || value === null) {
+    return { ok: true, collection: null };
+  }
+  if (typeof value !== "string") {
+    return { ok: false, error: "La collection doit être un texte." };
+  }
+  const collection = value.trim();
+  if (collection === "") {
+    return { ok: true, collection: null };
+  }
+  if (collection.length > COLLECTION_MAX) {
+    return { ok: false, error: "La collection est limitée à 80 caractères." };
+  }
+  return { ok: true, collection };
+}
 
 export function validateBookInput(
   value: unknown,
@@ -33,6 +80,14 @@ export function validateBookInput(
   if (!OWNERSHIPS.includes(body.ownership as Ownership)) {
     return { ok: false, error: "Le lien avec le livre n'est pas reconnu." };
   }
+  const category = parseCategory(body.category);
+  if (!category.ok) {
+    return category;
+  }
+  const collection = parseCollection(body.collection);
+  if (!collection.ok) {
+    return collection;
+  }
 
   return {
     ok: true,
@@ -40,6 +95,8 @@ export function validateBookInput(
       title,
       author,
       ownership: body.ownership as Ownership,
+      category: category.category,
+      collection: collection.collection,
     },
   };
 }

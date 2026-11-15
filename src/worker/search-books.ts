@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CATEGORIES, CATEGORY_LABELS, type BookCategory } from "./validate.ts";
 
 export const SEARCH_DEFAULT_LIMIT = 20;
 export const SEARCH_MAX_LIMIT = 50;
@@ -7,6 +8,7 @@ export const SEARCH_MAX_QUERY = 200;
 export const searchBooksInput = z.object({
   query: z.string().trim().max(SEARCH_MAX_QUERY).optional(),
   status: z.enum(["all", "owned", "read", "wishlist"]).optional(),
+  category: z.enum(CATEGORIES).optional(),
   limit: z.number().int().min(1).max(SEARCH_MAX_LIMIT).optional(),
 });
 
@@ -17,6 +19,8 @@ export type SearchBook = {
   title: string;
   author: string;
   ownership: "owned" | "wishlist" | "none";
+  category: BookCategory | null;
+  collection: string | null;
   read: boolean;
   readingStatus: "to_read" | "reading" | "read" | null;
   startedOn: string | null;
@@ -34,6 +38,8 @@ type SearchRow = {
   title: string;
   author: string;
   ownership: string;
+  category: string | null;
+  collection: string | null;
   reading_status: string | null;
   started_on: string | null;
   finished_on: string | null;
@@ -56,9 +62,13 @@ function filters(input: SearchBooksInput): { where: string; params: unknown[] } 
   if (query !== "") {
     const like = `%${escapeLike(query)}%`;
     clauses.push(
-      "(books.title LIKE ? ESCAPE '\\' OR books.author LIKE ? ESCAPE '\\')",
+      "(books.title LIKE ? ESCAPE '\\' OR books.author LIKE ? ESCAPE '\\' OR books.collection LIKE ? ESCAPE '\\')",
     );
-    params.push(like, like);
+    params.push(like, like, like);
+  }
+  if (input.category) {
+    clauses.push("books.category = ?");
+    params.push(input.category);
   }
   if (input.status === "owned" || input.status === "wishlist") {
     clauses.push("books.ownership = ?");
@@ -83,11 +93,16 @@ function toBook(row: SearchRow): SearchBook {
       : null;
   const ownership =
     row.ownership === "owned" || row.ownership === "wishlist" ? row.ownership : "none";
+  const category = CATEGORIES.includes(row.category as BookCategory)
+    ? (row.category as BookCategory)
+    : null;
   return {
     id: row.id,
     title: row.title,
     author: row.author,
     ownership,
+    category,
+    collection: row.collection,
     read: readingStatus === "read",
     readingStatus,
     startedOn: row.started_on,
@@ -113,6 +128,8 @@ export async function searchBooks(
          books.title,
          books.author,
          books.ownership,
+         books.category,
+         books.collection,
          readings.status AS reading_status,
          readings.started_on,
          readings.finished_on,
@@ -154,6 +171,12 @@ export function formatSearch(result: SearchBooksResult): string {
     const labels = mark(book);
     if (labels !== "") {
       parts.push(labels);
+    }
+    if (book.category) {
+      parts.push(CATEGORY_LABELS[book.category]);
+    }
+    if (book.collection) {
+      parts.push(book.collection);
     }
     if (book.finishedOn) {
       parts.push(`terminé le ${book.finishedOn}`);

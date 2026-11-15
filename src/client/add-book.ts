@@ -1,9 +1,12 @@
+import type { BookCategory } from "../worker/validate.ts";
 import type { Book, Ownership } from "./demo-books.ts";
 
 export type NewBookInput = {
   title: string;
   author: string;
   ownership: Ownership;
+  category?: BookCategory | null;
+  collection?: string | null;
   read?: boolean;
 };
 
@@ -28,7 +31,14 @@ export function validateNewBook(draft: NewBookInput):
 
   return {
     ok: true,
-    book: { title, author, ownership: draft.ownership, read: draft.read === true },
+    book: {
+      title,
+      author,
+      ownership: draft.ownership,
+      category: draft.category ?? null,
+      collection: draft.collection?.trim() ? draft.collection.trim() : null,
+      read: draft.read === true,
+    },
   };
 }
 
@@ -57,6 +67,8 @@ export function replaceBook(
           title: input.title,
           author: input.author,
           ownership: input.ownership,
+          category: input.category ?? null,
+          collection: input.collection?.trim() ? input.collection.trim() : null,
         }
       : book,
   );

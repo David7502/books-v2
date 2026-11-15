@@ -11,6 +11,8 @@ type BookRow = {
   title: string;
   author: string;
   ownership: string;
+  category: string | null;
+  collection: string | null;
   cover_key: string | null;
   completed: number;
 };
@@ -21,6 +23,8 @@ const bookSelect = `
     books.title,
     books.author,
     books.ownership,
+    books.category,
+    books.collection,
     books.cover_key,
     EXISTS (
       SELECT 1 FROM readings
@@ -39,6 +43,8 @@ function toBook(row: BookRow) {
     title: row.title,
     author: row.author,
     ownership: row.ownership,
+    category: row.category,
+    collection: row.collection,
     coverKey: row.cover_key,
     completed: row.completed === 1,
   };
@@ -152,7 +158,13 @@ async function storedBook(db: D1Database, id: string): Promise<BookRow | null> {
 
 async function insertStoredBook(
   db: D1Database,
-  book: { title: string; author: string; ownership: string },
+  book: {
+    title: string;
+    author: string;
+    ownership: string;
+    category: string | null;
+    collection: string | null;
+  },
   read: boolean,
   coverKey: string | null,
 ): Promise<Response> {
@@ -160,9 +172,19 @@ async function insertStoredBook(
   const statements = [
     db
       .prepare(
-        "INSERT INTO books (id, title, author, ownership, cover_key) VALUES (?, ?, ?, ?, ?)",
+        `INSERT INTO books
+          (id, title, author, ownership, category, collection, cover_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(id, book.title, book.author, book.ownership, coverKey),
+      .bind(
+        id,
+        book.title,
+        book.author,
+        book.ownership,
+        book.category,
+        book.collection,
+        coverKey,
+      ),
   ];
   if (read) {
     statements.push(
@@ -247,6 +269,8 @@ async function insertBookWithCover(
     title: form.get("title"),
     author: form.get("author"),
     ownership: form.get("ownership"),
+    category: form.get("category"),
+    collection: form.get("collection"),
     read: readField === "true" ? true : readField === "false" || readField === null ? false : readField,
   });
   if (!parsed.ok) {
@@ -382,8 +406,17 @@ async function updateBook(db: D1Database, request: Request, id: string): Promise
   }
 
   const update = await db
-    .prepare("UPDATE books SET title = ?, author = ?, ownership = ? WHERE id = ?")
-    .bind(parsed.book.title, parsed.book.author, parsed.book.ownership, id)
+    .prepare(
+      "UPDATE books SET title = ?, author = ?, ownership = ?, category = ?, collection = ? WHERE id = ?",
+    )
+    .bind(
+      parsed.book.title,
+      parsed.book.author,
+      parsed.book.ownership,
+      parsed.book.category,
+      parsed.book.collection,
+      id,
+    )
     .run();
   if ((update.meta.changes ?? 0) === 0) {
     return jsonError("Ce livre n'existe pas.", 404);

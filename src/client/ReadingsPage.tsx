@@ -6,6 +6,7 @@ import {
   type LibraryBook,
   type ReadingRecord,
 } from "./api.ts";
+import { bookMeta } from "./book-meta.ts";
 import {
   validateReadingInput,
   type ReadingInput,
@@ -162,6 +163,7 @@ export default function ReadingsPage({
         {book.title}, {book.author}. Cette fiche ne change pas le lien avec le
         livre.
       </p>
+      {bookMeta(book) ? <p className="card-meta">{bookMeta(book)}</p> : null}
       <PageLink href="/" className="back-link" navigate={navigate}>
         Annuler et revenir à la bibliothèque
       </PageLink>

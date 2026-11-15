@@ -112,7 +112,11 @@ On n'ajoute pas de bibliothèque de routes. L'accueil est `/`, l'ajout `/ajouter
 
 Le bouton **Ajouter un livre** de l'accueil mène à `/ajouter`. **Modifier**, sur une carte, mène à `/livres/…/modifier`. Les deux écrans utilisent le même `BookForm`. À la création, les champs commencent vides. À la modification, ils sont remplis avec le livre trouvé par son `id`.
 
-`onSubmitBook` est la fonction fournie par `App`. Pour un ajout, le Worker fabrique un nouvel `id`. Pour une modification, il garde l'`id` et les lectures : le titre, l'auteur et la possession changent. La couverture ne change que si une nouvelle image est choisie.
+`onSubmitBook` est la fonction fournie par `App`. Pour un ajout, le Worker fabrique un nouvel `id`. Pour une modification, il garde l'`id` et les lectures : le titre, l'auteur, la possession, la catégorie et la collection changent. La couverture ne change que si une nouvelle image est choisie.
+
+La catégorie est une liste fixe : Roman, Essai, Bande dessinée, Philosophie, Autre. Le formulaire affiche ces mots. La base garde une valeur stable : `novel`, `essay`, `comic`, `philosophy`, `other`. « Sans catégorie » enregistre `NULL`. Une autre valeur est refusée par le Worker. La collection est un texte libre, par exemple Lucky Luke, coupé des espaces, au plus 80 caractères. Un champ vide reste `NULL`. Les livres déjà là n'ont ni l'un ni l'autre tant qu'on ne les remplit pas.
+
+L'accueil ajoute deux filtres sous la recherche : une catégorie, et un texte de collection. Ils se combinent avec Tous, Lu, Je veux, J’ai et la recherche titre ou auteur. Les nombres des quatre boutons restent ceux de toute la bibliothèque. La carte et la page Lecture montrent la catégorie et la collection seulement quand elles sont remplies, en petit sous l'auteur.
 
 `onSubmit` reçoit l'événement du formulaire. `preventDefault()` empêche le navigateur de recharger la page. La touche Entrée dans un champ envoie ce même événement.
 
@@ -128,7 +132,25 @@ Au retour, la recherche est vidée s'il y en avait une, pour que la carte soit v
 
 Chaque livre a une seule fiche, dans la table `readings`, reliée par `book_id`. Le bouton **Lecture** ouvre `/livres/identifiant/lecture`. Le même formulaire sert la première fois et les fois suivantes : le premier enregistrement crée la ligne, le suivant met à jour la même ligne.
 
-`0002_reading_details.sql` ajoute des colonnes vides : dates, lieu, note. `0003_one_reading_per_book.sql` ajoute un index unique sur `book_id`. Les lignes déjà présentes restent. `npm run db:migrate` n'efface rien. Le jeu de démo et la base locale inspectée n'ont pas deux fiches pour un même livre. Si une base en avait déjà, l'index refuserait de se créer et le serveur refuserait d'en choisir une, sans les supprimer.
+`0002_reading_details.sql` ajoute des colonnes vides : dates, lieu, note. `0003_one_reading_per_book.sql` ajoute un index unique sur `book_id`. `0004_category_collection.sql` ajoute deux colonnes vides sur `books` : `category` et `collection`. Les lignes déjà présentes restent, avec ces champs vides. `npm run db:migrate` n'efface rien. Le jeu de démo et la base locale inspectée n'ont pas deux fiches pour un même livre. Si une base en avait déjà, l'index refuserait de se créer et le serveur refuserait d'en choisir une, sans les supprimer.
+
+En local, PowerShell :
+
+```powershell
+npx wrangler d1 migrations apply books-v2 --local
+```
+
+En production, la migration s'applique **avant** le déploiement, sur la base `BOOKS_PROD`. Ne lance ces commandes qu'après avoir relu la migration, et seulement quand tu es prêt à publier :
+
+```powershell
+$env:CLOUDFLARE_ENV = "production"
+npx wrangler d1 migrations apply BOOKS_PROD --remote --env production
+npm run build
+npx wrangler deploy
+Remove-Item Env:CLOUDFLARE_ENV
+```
+
+`CLOUDFLARE_ENV=production` choisit le bloc `env.production` de `wrangler.jsonc`. `--remote` écrit dans la base Cloudflare, pas dans `.wrangler/`. Si le nouveau code part avant cette migration, la liste des livres échoue, parce qu'elle lit des colonnes qui n'existent pas encore.
 
 Une date vide reste vide. « À lire » n'accepte aucune date. « En cours » peut avoir un début, pas de fin. « Terminé » peut avoir les deux, et la fin ne peut pas précéder le début. La note est 1 à 5, ou « Sans note ». Elle ne change ni le statut ni la possession.
 

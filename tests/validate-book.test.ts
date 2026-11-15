@@ -11,6 +11,8 @@ assert.equal(accepted.ok, true);
 if (accepted.ok) {
   assert.equal(accepted.book.title, injection);
   assert.equal(accepted.book.ownership, "owned");
+  assert.equal(accepted.book.category, null);
+  assert.equal(accepted.book.collection, null);
 }
 
 assert.equal(validateBookInput({ title: "   ", author: "Ada", ownership: "owned" }).ok, false);
@@ -46,5 +48,46 @@ assert.equal(unread.ok, true);
 if (unread.ok) {
   assert.equal(unread.read, false);
 }
+
+const classified = validateCreateBook({
+  title: "Lucky Luke",
+  author: "Morris",
+  ownership: "owned",
+  category: "comic",
+  collection: "  Lucky Luke  ",
+});
+assert.equal(classified.ok, true);
+if (classified.ok) {
+  assert.equal(classified.book.category, "comic");
+  assert.equal(classified.book.collection, "Lucky Luke");
+}
+assert.equal(
+  validateBookInput({
+    title: "Titre",
+    author: "Ada",
+    ownership: "none",
+    category: "Roman",
+  }).ok,
+  false,
+);
+assert.equal(
+  validateBookInput({
+    title: "Titre",
+    author: "Ada",
+    ownership: "none",
+    collection: "a".repeat(81),
+  }).ok,
+  false,
+);
+assert.equal(
+  validateBookInput({
+    title: "Titre",
+    author: "Ada",
+    ownership: "none",
+    category: "",
+    collection: "   ",
+  }).ok,
+  true,
+);
 
 console.log("validate-book.test.ts : ok");

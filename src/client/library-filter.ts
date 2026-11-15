@@ -1,4 +1,4 @@
-import { bookMatchesQuery } from "./search.ts";
+import { bookMatchesQuery, normalizeSearch } from "./search.ts";
 
 export const LIBRARY_FILTERS = ["all", "read", "wishlist", "owned"] as const;
 
@@ -9,6 +9,8 @@ export type CountedBook = {
   author: string;
   ownership: string;
   completed: boolean;
+  category?: string | null;
+  collection?: string | null;
 };
 
 const filterLabel: Record<LibraryFilter, string> = {
@@ -47,24 +49,54 @@ export function libraryCounts(books: readonly { ownership: string; completed: bo
   };
 }
 
+function bookMatchesCategory(book: CountedBook, category: string): boolean {
+  if (category === "") {
+    return true;
+  }
+  return book.category === category;
+}
+
+function bookMatchesCollection(book: CountedBook, collection: string): boolean {
+  const needle = normalizeSearch(collection);
+  if (needle === "") {
+    return true;
+  }
+  return normalizeSearch(book.collection ?? "").includes(needle);
+}
+
 export function visibleLibraryBooks<T extends CountedBook>(
   books: readonly T[],
   query: string,
   filter: LibraryFilter,
+  category = "",
+  collection = "",
 ): T[] {
   return books.filter(
-    (book) => bookMatchesFilter(book, filter) && bookMatchesQuery(book, query),
+    (book) =>
+      bookMatchesFilter(book, filter) &&
+      bookMatchesQuery(book, query) &&
+      bookMatchesCategory(book, category) &&
+      bookMatchesCollection(book, collection),
   );
 }
 
-export function emptyLibraryMessage(filter: LibraryFilter, query: string): string {
+export function emptyLibraryMessage(
+  filter: LibraryFilter,
+  query: string,
+  extra = "",
+): string {
   const label = filterLabel[filter];
   const trimmed = query.trim();
-  if (trimmed !== "" && filter !== "all") {
-    return `Aucun livre pour ${label} ne correspond à « ${trimmed} ».`;
+  const detail = extra.trim();
+  const scope = [filter === "all" ? "" : label, detail].filter((part) => part !== "").join(", ");
+  if (trimmed !== "" && scope !== "") {
+    return `Aucun livre pour ${scope} ne correspond à « ${trimmed} ».`;
   }
   if (trimmed !== "") {
     return "Aucun livre ne correspond à cette recherche.";
+  }
+  if (scope !== "") {
+    return `Aucun livre pour ${scope}.`;
   }
   return `Aucun livre pour ${label}.`;
 }

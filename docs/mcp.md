@@ -37,13 +37,14 @@ Ne mets jamais le Client Secret dans ce fichier, dans Git, ni dans une conversat
 
 ## Chercher des livres
 
-`search_books` accepte trois arguments, tous facultatifs :
+`search_books` accepte quatre arguments, tous facultatifs :
 
-- `query` : un texte, au plus 200 caractères, comparé au titre et à l'auteur sans tenir compte des majuscules. La table n'a pas d'ISBN. Les signes `%` et `_` sont cherchés comme des lettres, pas comme des jokers.
+- `query` : un texte, au plus 200 caractères, comparé au titre, à l'auteur et à la collection sans tenir compte des majuscules. La table n'a pas d'ISBN. Les signes `%` et `_` sont cherchés comme des lettres, pas comme des jokers.
 - `status` : `all`, `owned` (j'ai), `read` (j'ai lu) ou `wishlist` (je veux).
+- `category` : `novel` (Roman), `essay` (Essai), `comic` (Bande dessinée), `philosophy` (Philosophie) ou `other` (Autre). Sans cet argument, toutes les catégories restent.
 - `limit` : de 1 à 50. Sans limite, 20 livres au plus sont listés. Le total indiqué compte tous ceux qui correspondent.
 
-La réponse a un texte lisible et le même résultat en données structurées : identifiant, titre, auteur, possession, lecture, dates et note.
+La réponse a un texte lisible et le même résultat en données structurées : identifiant, titre, auteur, possession, catégorie, collection, lecture, dates et note. Une catégorie vide ou une collection vide vaut `null`. L'outil ne fait toujours que des `SELECT` avec des paramètres.
 
 ## Essai local, sans secret
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { bookMeta } from "./book-meta.ts";
 import type { Ownership } from "./demo-books.ts";
 
 type BookCardProps = {
@@ -7,6 +8,8 @@ type BookCardProps = {
     title: string;
     author: string;
     ownership: Ownership;
+    category?: string | null;
+    collection?: string | null;
     coverKey: string | null;
   };
   completed: boolean;
@@ -17,6 +20,7 @@ export default function BookCard({ book, completed, children }: BookCardProps) {
   const showOwned = book.ownership === "owned";
   const showWishlist = book.ownership === "wishlist";
   const hasLabel = showOwned || showWishlist || completed;
+  const meta = bookMeta(book);
 
   return (
     <article className="book-card">
@@ -31,6 +35,7 @@ export default function BookCard({ book, completed, children }: BookCardProps) {
       )}
       <h3>{book.title}</h3>
       <p>{book.author}</p>
+      {meta ? <p className="card-meta">{meta}</p> : null}
       {hasLabel && (
         <ul className="labels">
           {showOwned && <li>j’ai</li>}

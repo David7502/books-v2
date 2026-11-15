@@ -1,3 +1,4 @@
+import type { BookCategory } from "../worker/validate.ts";
 import type { Ownership } from "./demo-books.ts";
 import type { NewBookInput } from "./add-book.ts";
 import type { ReadingInput } from "../worker/validate-reading.ts";
@@ -7,6 +8,8 @@ export type LibraryBook = {
   title: string;
   author: string;
   ownership: Ownership;
+  category: BookCategory | null;
+  collection: string | null;
   coverKey: string | null;
   completed: boolean;
 };
@@ -59,6 +62,8 @@ export async function createBookWithCover(
   form.set("title", input.title);
   form.set("author", input.author);
   form.set("ownership", input.ownership);
+  form.set("category", input.category ?? "");
+  form.set("collection", input.collection ?? "");
   form.set("read", input.read === true ? "true" : "false");
   form.set("cover", cover);
   const response = await request("/api/books", { method: "POST", body: form });
@@ -82,6 +87,8 @@ export async function createBook(input: NewBookInput): Promise<LibraryBook> {
       title: input.title,
       author: input.author,
       ownership: input.ownership,
+      category: input.category ?? null,
+      collection: input.collection ?? null,
       read: input.read === true,
     }),
   });
@@ -141,6 +148,8 @@ export async function updateBook(
       title: input.title,
       author: input.author,
       ownership: input.ownership,
+      category: input.category ?? null,
+      collection: input.collection ?? null,
     }),
   });
   return (await response.json()) as LibraryBook;

@@ -22,6 +22,7 @@ import {
   visibleLibraryBooks,
 } from "./library-filter.ts";
 import { formatResultCount } from "./search.ts";
+import { CATEGORIES, CATEGORY_LABELS } from "../worker/validate.ts";
 import { usePath } from "./use-path.ts";
 
 type Navigate = (to: string) => void;
@@ -36,6 +37,8 @@ const emptyBook: NewBookInput = {
   title: "",
   author: "",
   ownership: "none",
+  category: null,
+  collection: "",
 };
 
 function PageLink({
@@ -97,12 +100,28 @@ export default function App() {
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<LibraryFilter>("all");
+  const [category, setCategory] = useState("");
+  const [collectionQuery, setCollectionQuery] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [path, navigate] = usePath();
   const loadGeneration = useRef(0);
-  const visibleBooks = visibleLibraryBooks(books, query, filter);
+  const visibleBooks = visibleLibraryBooks(
+    books,
+    query,
+    filter,
+    category,
+    collectionQuery,
+  );
+  const refineLabel = [
+    category && category in CATEGORY_LABELS
+      ? CATEGORY_LABELS[category as (typeof CATEGORIES)[number]]
+      : "",
+    collectionQuery.trim() ? `collection « ${collectionQuery.trim()} »` : "",
+  ]
+    .filter((part) => part !== "")
+    .join(", ");
   const counts = libraryCounts(books);
   const empty = visibleBooks.length === 0;
   const readingId = readingBookId(path);
@@ -147,7 +166,8 @@ export default function App() {
 
   function remember(kind: Notice["kind"], id: string) {
     const hadSearch = query.trim() !== "";
-    const hadFilter = filter !== "all";
+    const hadFilter =
+      filter !== "all" || category !== "" || collectionQuery.trim() !== "";
     setNotice({
       kind,
       id,
@@ -155,6 +175,8 @@ export default function App() {
     });
     setQuery("");
     setFilter("all");
+    setCategory("");
+    setCollectionQuery("");
     navigate("/");
   }
 
@@ -281,6 +303,8 @@ export default function App() {
             title: editing.title,
             author: editing.author,
             ownership: editing.ownership,
+            category: editing.category,
+            collection: editing.collection ?? "",
           }}
           submitLabel="Enregistrer"
           currentCoverUrl={
@@ -364,6 +388,38 @@ export default function App() {
           )}
         </div>
       </form>
+      {!loading && !loadError ? (
+        <div className="refine">
+          <div>
+            <label htmlFor="category-filter">Catégorie</label>
+            <select
+              id="category-filter"
+              value={category}
+              onChange={(event) => {
+                setCategory(event.target.value);
+              }}
+            >
+              <option value="">Toutes</option>
+              {CATEGORIES.map((value) => (
+                <option key={value} value={value}>
+                  {CATEGORY_LABELS[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="collection-filter">Collection</label>
+            <input
+              id="collection-filter"
+              type="search"
+              value={collectionQuery}
+              onChange={(event) => {
+                setCollectionQuery(event.target.value);
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
       {noticed && notice && (
         <p id="add-status" role="status">
           {notice.kind === "added"
@@ -402,13 +458,15 @@ export default function App() {
       ) : null}
       {!loading && !loadError && books.length > 0 && empty ? (
         <p id="search-empty">
-          {emptyLibraryMessage(filter, query)}{" "}
+          {emptyLibraryMessage(filter, query, refineLabel)}{" "}
           <button
             type="button"
             className="show-all"
             onClick={() => {
               setQuery("");
               setFilter("all");
+              setCategory("");
+              setCollectionQuery("");
             }}
           >
             Revenir à Tous

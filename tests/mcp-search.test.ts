@@ -34,6 +34,8 @@ function library() {
       title TEXT NOT NULL,
       author TEXT NOT NULL,
       ownership TEXT NOT NULL,
+      category TEXT,
+      collection TEXT,
       cover_key TEXT
     );
     CREATE TABLE readings (
@@ -45,11 +47,11 @@ function library() {
       location TEXT,
       rating INTEGER
     );
-    INSERT INTO books (id, title, author, ownership) VALUES
-      ('demo-brume', 'La brume du phare', 'Ada Quenelle', 'owned'),
-      ('demo-horloge', 'L''horloge sans aiguilles', 'Milo Sablier', 'wishlist'),
-      ('demo-jardin', 'Le jardin sous la gare', 'Nina Calebasse', 'none'),
-      ('demo-pourcent', '100% certain', 'Lina', 'none');
+    INSERT INTO books (id, title, author, ownership, category, collection) VALUES
+      ('demo-brume', 'La brume du phare', 'Ada Quenelle', 'owned', 'novel', NULL),
+      ('demo-horloge', 'L''horloge sans aiguilles', 'Milo Sablier', 'wishlist', 'comic', 'Lucky Luke'),
+      ('demo-jardin', 'Le jardin sous la gare', 'Nina Calebasse', 'none', NULL, NULL),
+      ('demo-pourcent', '100% certain', 'Lina', 'none', NULL, NULL);
     INSERT INTO readings (id, book_id, status, started_on, finished_on, rating) VALUES
       ('r-brume', 'demo-brume', 'read', '2020-01-01', '2020-02-01', 5),
       ('r-jardin', 'demo-jardin', 'read', NULL, NULL, NULL);
@@ -189,6 +191,30 @@ assert.deepEqual(
   wildcard.result?.structuredContent?.books?.map((book) => book.id),
   ["demo-pourcent"],
 );
+
+const series = await payload(await call("search_books", { query: "lucky" }, jwt));
+assert.deepEqual(
+  series.result?.structuredContent?.books?.map((book) => book.id),
+  ["demo-horloge"],
+);
+assert.equal(
+  (series.result?.structuredContent?.books?.[0] as { collection?: string } | undefined)
+    ?.collection,
+  "Lucky Luke",
+);
+assert.match(series.result?.content?.[0]?.text ?? "", /Bande dessinée/);
+assert.match(series.result?.content?.[0]?.text ?? "", /Lucky Luke/);
+
+const comics = await payload(
+  await call("search_books", { category: "comic", status: "wishlist" }, jwt),
+);
+assert.deepEqual(
+  comics.result?.structuredContent?.books?.map((book) => book.id),
+  ["demo-horloge"],
+);
+
+const badCategory = await payload(await call("search_books", { category: "Roman" }, jwt));
+assert.equal(badCategory.result?.isError, true);
 
 const invalid = await payload(await call("search_books", { limit: 51 }, jwt));
 assert.equal(invalid.result?.isError, true);

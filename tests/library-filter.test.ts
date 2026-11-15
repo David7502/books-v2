@@ -41,6 +41,29 @@ assert.equal(
   false,
 );
 
+const classified = [
+  { ...books[0], category: "novel", collection: null },
+  { ...books[1], category: "comic", collection: "Lucky Luke" },
+  { ...books[2], category: null, collection: null },
+  { ...books[3], category: "essay", collection: "Lucky Luke" },
+];
+assert.equal(libraryCounts(classified).all, 4);
+assert.equal(libraryCounts(classified).owned, 2);
+assert.deepEqual(
+  visibleLibraryBooks(classified, "", "owned", "comic").map((book) => book.title),
+  [],
+);
+assert.deepEqual(
+  visibleLibraryBooks(classified, "milo", "wishlist", "comic", "lucky").map(
+    (book) => book.title,
+  ),
+  ["L'horloge"],
+);
+assert.equal(
+  emptyLibraryMessage("owned", "", "Bande dessinée"),
+  "Aucun livre pour J’ai, Bande dessinée.",
+);
+
 assert.equal(
   emptyLibraryMessage("all", "zzzz"),
   "Aucun livre ne correspond à cette recherche.",

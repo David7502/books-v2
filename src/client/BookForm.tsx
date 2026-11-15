@@ -2,6 +2,12 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { validateNewBook, type NewBookInput } from "./add-book.ts";
 import type { Ownership } from "./demo-books.ts";
 import { coverFileError } from "../worker/validate-cover.ts";
+import {
+  CATEGORIES,
+  CATEGORY_LABELS,
+  COLLECTION_MAX,
+  type BookCategory,
+} from "../worker/validate.ts";
 
 type BookFormProps = {
   initial: NewBookInput;
@@ -25,6 +31,8 @@ export default function BookForm({
 }: BookFormProps) {
   const [title, setTitle] = useState(initial.title);
   const [author, setAuthor] = useState(initial.author);
+  const [category, setCategory] = useState<BookCategory | "">(initial.category ?? "");
+  const [collection, setCollection] = useState(initial.collection ?? "");
   const [ownership, setOwnership] = useState<Ownership>(initial.ownership);
   const [read, setRead] = useState(initial.read === true);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -53,10 +61,16 @@ export default function BookForm({
     if (saving) {
       return;
     }
+    if (collection.trim().length > COLLECTION_MAX) {
+      setSubmitError("La collection est limitée à 80 caractères.");
+      return;
+    }
     const result = validateNewBook({
       title,
       author,
       ownership,
+      category: category === "" ? null : category,
+      collection,
       read: showRead ? read : false,
     });
 
@@ -131,6 +145,38 @@ export default function BookForm({
             {fieldError.author}
           </p>
         )}
+      </div>
+      <div>
+        <label htmlFor="book-category">Catégorie</label>
+        <select
+          id="book-category"
+          name="category"
+          value={category}
+          onChange={(event) => {
+            setCategory(event.target.value as BookCategory | "");
+          }}
+        >
+          <option value="">Sans catégorie</option>
+          {CATEGORIES.map((value) => (
+            <option key={value} value={value}>
+              {CATEGORY_LABELS[value]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="book-collection">Collection</label>
+        <input
+          id="book-collection"
+          name="collection"
+          type="text"
+          value={collection}
+          maxLength={COLLECTION_MAX}
+          onChange={(event) => {
+            setCollection(event.target.value);
+          }}
+        />
+        <p className="add-note">Facultatif. Par exemple Lucky Luke.</p>
       </div>
       <div>
         <label htmlFor="book-cover">Couverture, facultative</label>

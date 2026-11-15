@@ -2,52 +2,13 @@ import { guardApi } from "./access.ts";
 import { handleMcpRequest } from "./mcp.ts";
 import { validateCoverBytes, type CoverType } from "./validate-cover.ts";
 import { validateReadingInput } from "./validate-reading.ts";
+import { bookSelect, insertStoredBook, storedBook, toBook, type BookRow } from "./books.ts";
 import { validateBookInput, validateCreateBook } from "./validate.ts";
 
 const MAX_BODY_BYTES = 4096;
 
-type BookRow = {
-  id: string;
-  title: string;
-  author: string;
-  ownership: string;
-  category: string | null;
-  collection: string | null;
-  cover_key: string | null;
-  completed: number;
-};
-
-const bookSelect = `
-  SELECT
-    books.id,
-    books.title,
-    books.author,
-    books.ownership,
-    books.category,
-    books.collection,
-    books.cover_key,
-    EXISTS (
-      SELECT 1 FROM readings
-      WHERE readings.book_id = books.id AND readings.status = 'read'
-    ) AS completed
-  FROM books
-`;
-
 function jsonError(message: string, status: number): Response {
   return Response.json({ error: message }, { status });
-}
-
-function toBook(row: BookRow) {
-  return {
-    id: row.id,
-    title: row.title,
-    author: row.author,
-    ownership: row.ownership,
-    category: row.category,
-    collection: row.collection,
-    coverKey: row.cover_key,
-    completed: row.completed === 1,
-  };
 }
 
 async function readJson(
@@ -152,57 +113,17 @@ async function readBoundedBytes(
   return { ok: true, bytes };
 }
 
-async function storedBook(db: D1Database, id: string): Promise<BookRow | null> {
-  return db.prepare(`${bookSelect} WHERE books.id = ?`).bind(id).first<BookRow>();
-}
-
-async function insertStoredBook(
+async function createdBook(
   db: D1Database,
-  book: {
-    title: string;
-    author: string;
-    ownership: string;
-    category: string | null;
-    collection: string | null;
-  },
+  book: Parameters<typeof insertStoredBook>[1],
   read: boolean,
   coverKey: string | null,
 ): Promise<Response> {
-  const id = crypto.randomUUID();
-  const statements = [
-    db
-      .prepare(
-        `INSERT INTO books
-          (id, title, author, ownership, category, collection, cover_key)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        id,
-        book.title,
-        book.author,
-        book.ownership,
-        book.category,
-        book.collection,
-        coverKey,
-      ),
-  ];
-  if (read) {
-    statements.push(
-      db
-        .prepare(
-          `INSERT INTO readings
-            (id, book_id, status, started_on, finished_on, location, rating)
-           VALUES (?, ?, 'read', NULL, NULL, NULL, NULL)`,
-        )
-        .bind(crypto.randomUUID(), id),
-    );
-  }
-  await db.batch(statements);
-  const row = await storedBook(db, id);
-  if (!row) {
+  const stored = await insertStoredBook(db, book, read, coverKey);
+  if (!stored) {
     return jsonError("Le serveur n'a pas pu répondre.", 500);
   }
-  return Response.json(toBook(row), { status: 201 });
+  return Response.json(stored, { status: 201 });
 }
 
 async function putCover(
@@ -238,7 +159,7 @@ async function insertBook(db: D1Database, bucket: R2Bucket, request: Request): P
     return jsonError(parsed.error, 400);
   }
   try {
-    return await insertStoredBook(db, parsed.book, parsed.read, null);
+    return await createdBook(db, parsed.book, parsed.read, null);
   } catch {
     return jsonError("Le livre n'a pas été enregistré.", 500);
   }
@@ -280,7 +201,7 @@ async function insertBookWithCover(
   const file = form.get("cover");
   if (!(file instanceof File) || (file.size === 0 && file.name === "")) {
     try {
-      return await insertStoredBook(db, parsed.book, parsed.read, null);
+      return await createdBook(db, parsed.book, parsed.read, null);
     } catch {
       return jsonError("Le livre n'a pas été enregistré.", 500);
     }
@@ -303,7 +224,7 @@ async function insertBookWithCover(
   }
 
   try {
-    return await insertStoredBook(db, parsed.book, parsed.read, key);
+    return await createdBook(db, parsed.book, parsed.read, key);
   } catch {
     await discardCover(bucket, key);
     return jsonError("Le livre n'a pas été enregistré.", 500);

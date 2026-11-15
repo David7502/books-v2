@@ -138,12 +138,33 @@ assert.equal(initialized.result?.serverInfo?.name, "books-v2");
 const listed = await callWorker(mcpRequest("tools/list", {}, token));
 assert.equal(listed.status, 200);
 const tools = (await readMcp(listed)) as {
-  result?: { tools?: Array<{ name: string }> };
+  result?: {
+    tools?: Array<{
+      name: string;
+      annotations?: {
+        readOnlyHint?: boolean;
+        destructiveHint?: boolean;
+        idempotentHint?: boolean;
+      };
+    }>;
+  };
 };
 assert.deepEqual(
   tools.result?.tools?.map((tool) => tool.name),
-  ["ping", "search_books"],
+  ["ping", "search_books", "add_book"],
 );
+const searchTool = tools.result?.tools?.find((tool) => tool.name === "search_books");
+assert.deepEqual(searchTool?.annotations, {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+});
+const addTool = tools.result?.tools?.find((tool) => tool.name === "add_book");
+assert.deepEqual(addTool?.annotations, {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+});
 
 const called = await callWorker(
   mcpRequest("tools/call", { name: "ping", arguments: {} }, token),

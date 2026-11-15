@@ -17,6 +17,7 @@ assert.equal(counts.all, 4);
 assert.equal(counts.read, 2);
 assert.equal(counts.wishlist, 1);
 assert.equal(counts.owned, 2);
+assert.equal(counts.to_read, 1);
 assert.notEqual(counts.owned + counts.wishlist + counts.read, counts.all);
 
 assert.deepEqual(
@@ -40,6 +41,14 @@ assert.equal(
   visibleLibraryBooks(books, "", "owned").some((book) => book.ownership === "none"),
   false,
 );
+assert.deepEqual(
+  visibleLibraryBooks(books, "", "to_read").map((book) => book.title),
+  ["Le cartographe"],
+);
+assert.equal(
+  visibleLibraryBooks(books, "", "to_read").some((book) => book.completed),
+  false,
+);
 
 const classified = [
   { ...books[0], category: "novel", collection: null },
@@ -59,6 +68,11 @@ assert.deepEqual(
   ),
   ["L'horloge"],
 );
+assert.deepEqual(
+  visibleLibraryBooks(classified, "", "to_read", "essay", "lucky").map((book) => book.title),
+  ["Le cartographe"],
+);
+assert.deepEqual(visibleLibraryBooks(classified, "", "to_read", "novel"), []);
 assert.equal(
   emptyLibraryMessage("owned", "", "Bande dessinée"),
   "Aucun livre pour J’ai, Bande dessinée.",
@@ -69,6 +83,7 @@ assert.equal(
   "Aucun livre ne correspond à cette recherche.",
 );
 assert.equal(emptyLibraryMessage("read", "   "), "Aucun livre pour Lu.");
+assert.equal(emptyLibraryMessage("to_read", "   "), "Aucun livre pour À lire.");
 assert.match(emptyLibraryMessage("wishlist", "ada"), /Je veux/);
 assert.match(emptyLibraryMessage("owned", "ada"), /« ada »/);
 

@@ -51,10 +51,12 @@ function library() {
       ('demo-brume', 'La brume du phare', 'Ada Quenelle', 'owned', 'novel', NULL),
       ('demo-horloge', 'L''horloge sans aiguilles', 'Milo Sablier', 'wishlist', 'comic', 'Lucky Luke'),
       ('demo-jardin', 'Le jardin sous la gare', 'Nina Calebasse', 'none', NULL, NULL),
-      ('demo-pourcent', '100% certain', 'Lina', 'none', NULL, NULL);
+      ('demo-pourcent', '100% certain', 'Lina', 'none', NULL, NULL),
+      ('demo-attente', 'Attente sur le quai', 'Oscar', 'owned', 'essay', NULL);
     INSERT INTO readings (id, book_id, status, started_on, finished_on, rating) VALUES
       ('r-brume', 'demo-brume', 'read', '2020-01-01', '2020-02-01', 5),
-      ('r-jardin', 'demo-jardin', 'read', NULL, NULL, NULL);
+      ('r-jardin', 'demo-jardin', 'read', NULL, NULL, NULL),
+      ('r-attente', 'demo-attente', 'reading', '2024-03-01', NULL, NULL);
   `);
   return {
     statements,
@@ -160,7 +162,7 @@ assert.match(found.result?.content?.[0]?.text ?? "", /note 5/);
 const owned = await payload(await call("search_books", { status: "owned" }, jwt));
 assert.deepEqual(
   owned.result?.structuredContent?.books?.map((book) => book.id),
-  ["demo-brume"],
+  ["demo-attente", "demo-brume"],
 );
 
 const read = await payload(await call("search_books", { status: "read" }, jwt));
@@ -177,9 +179,9 @@ assert.deepEqual(
 );
 
 const capped = await payload(await call("search_books", { limit: 1 }, jwt));
-assert.equal(capped.result?.structuredContent?.total, 4);
+assert.equal(capped.result?.structuredContent?.total, 5);
 assert.equal(capped.result?.structuredContent?.books?.length, 1);
-assert.match(capped.result?.content?.[0]?.text ?? "", /1 affiché sur 4/);
+assert.match(capped.result?.content?.[0]?.text ?? "", /1 affiché sur 5/);
 
 const empty = await payload(await call("search_books", { query: "zzzz" }, jwt));
 assert.equal(empty.result?.structuredContent?.total, 0);
@@ -212,6 +214,21 @@ assert.deepEqual(
   comics.result?.structuredContent?.books?.map((book) => book.id),
   ["demo-horloge"],
 );
+
+const waiting = await payload(await call("search_books", { to_read: true }, jwt));
+assert.deepEqual(
+  waiting.result?.structuredContent?.books?.map((book) => book.id),
+  ["demo-attente"],
+);
+const waitingEssay = await payload(
+  await call("search_books", { to_read: true, category: "essay" }, jwt),
+);
+assert.deepEqual(
+  waitingEssay.result?.structuredContent?.books?.map((book) => book.id),
+  ["demo-attente"],
+);
+const notWaiting = await payload(await call("search_books", { to_read: false }, jwt));
+assert.equal(notWaiting.result?.structuredContent?.total, 5);
 
 const badCategory = await payload(await call("search_books", { category: "Roman" }, jwt));
 assert.equal(badCategory.result?.isError, true);

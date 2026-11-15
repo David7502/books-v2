@@ -116,7 +116,7 @@ Le bouton **Ajouter un livre** de l'accueil mène à `/ajouter`. **Modifier**, s
 
 La catégorie est une liste fixe : Roman, Essai, Bande dessinée, Philosophie, Autre. Le formulaire affiche ces mots. La base garde une valeur stable : `novel`, `essay`, `comic`, `philosophy`, `other`. « Sans catégorie » enregistre `NULL`. Une autre valeur est refusée par le Worker. La collection est un texte libre, par exemple Lucky Luke, coupé des espaces, au plus 80 caractères. Un champ vide reste `NULL`. Les livres déjà là n'ont ni l'un ni l'autre tant qu'on ne les remplit pas.
 
-L'accueil ajoute deux filtres sous la recherche : une catégorie, et un texte de collection. Ils se combinent avec Tous, Lu, Je veux, J’ai et la recherche titre ou auteur. Les nombres des quatre boutons restent ceux de toute la bibliothèque. La carte et la page Lecture montrent la catégorie et la collection seulement quand elles sont remplies, en petit sous l'auteur.
+L'accueil ajoute deux filtres sous la recherche : une catégorie, et un texte de collection. Ils se combinent avec Tous, Lu, Je veux, J’ai, À lire et la recherche titre ou auteur. Les nombres des boutons restent ceux de toute la bibliothèque. La carte et la page Lecture montrent la catégorie et la collection seulement quand elles sont remplies, en petit sous l'auteur.
 
 `onSubmit` reçoit l'événement du formulaire. `preventDefault()` empêche le navigateur de recharger la page. La touche Entrée dans un champ envoie ce même événement.
 
@@ -158,7 +158,7 @@ Une date vide reste vide. « À lire » n'accepte aucune date. « En cours » pe
 
 ## Compter et filtrer
 
-L'accueil montre quatre boutons : **Tous**, **Lu**, **Je veux**, **J’ai**. Le nombre sur chaque bouton compte toute la bibliothèque, pas la recherche en cours. **Tous** est le nombre de livres enregistrés. **Lu** compte les fiches Terminées. **Je veux** compte `wishlist`. **J’ai** compte `owned`. Un livre possédé et terminé compte dans Tous, dans Lu et dans J’ai. La somme des boutons n'est donc pas le total.
+L'accueil montre cinq boutons : **Tous**, **Lu**, **Je veux**, **J’ai**, **À lire**. Le nombre sur chaque bouton compte toute la bibliothèque, pas la recherche en cours. **Tous** est le nombre de livres enregistrés. **Lu** compte les fiches Terminées. **Je veux** compte `wishlist`. **J’ai** compte `owned`. **À lire** compte les livres `owned` qui n'ont pas de fiche Terminé : aucun nouveau label, aucune nouvelle colonne. Un livre possédé et terminé compte dans Tous, dans Lu et dans J’ai, mais pas dans À lire. Un livre possédé sans fiche, ou avec une fiche En cours, compte dans À lire. La somme des boutons n'est donc pas le total.
 
 Le bouton pressé a `aria-pressed="true"` et un contour. La liste en dessous applique ce filtre et la recherche titre ou auteur. Le nombre sous **Livres** est celui des cartes affichées. S'il ne reste rien, le message le dit, et **Revenir à Tous** enlève le filtre et la recherche. **Effacer**, à côté du champ, n'enlève que le texte.
 
@@ -190,7 +190,7 @@ L'écran ne répète plus cette phrase. Elle était fausse une fois l'applicatio
 - Avec `.dev.vars` qui contient `ACCESS_LOCAL_EXEMPT=dev-only`, `curl -i http://localhost:5173/api/health` pendant `npm run dev` renvoie `200` et `{"ok":true}`. Sans ce fichier, la même adresse répond `401`.
 - `phare` laisse « La brume du phare », avec « j’ai » et « j’ai lu ». `memoires` trouve « Mémoires d'un cartographe distrait ». `zzzz` affiche « Aucun livre » et une phrase qui dit qu'aucun livre ne correspond.
 - Un titre ou un auteur vide est refusé. Ajouter un livre avec **J’ai lu** et sans cocher « j’ai » affiche seulement « j’ai lu ». Ajouter avec « j’ai » sans cette case n'affiche pas « j’ai lu ». Les deux ensemble affichent les deux. Le livre reste après rechargement.
-- Les boutons **Tous**, **Lu**, **Je veux** et **J’ai** montrent des totaux qui ne changent pas quand on cherche. **Lu** puis une recherche ne garde que les livres terminés qui correspondent.
+- Les boutons **Tous**, **Lu**, **Je veux**, **J’ai** et **À lire** montrent des totaux qui ne changent pas quand on cherche. **Lu** puis une recherche ne garde que les livres terminés qui correspondent. **À lire** ne garde que les livres possédés qui ne sont pas terminés.
 - Une couverture JPEG, PNG ou WebP d'au plus 2 Mo s'affiche sur la carte et après rechargement. Un SVG, une page HTML, ou une image trop lourde est refusé. Le livre sans image garde « Pas de couverture ».
 - `npm test`, `npm run typecheck` et `npm run build` se terminent sans erreur.
 

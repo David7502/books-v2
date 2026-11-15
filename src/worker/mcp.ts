@@ -136,7 +136,7 @@ function createBookServer(env: { DB: D1Database }) {
     {
       title: "Chercher des livres",
       description:
-        "Cherche des livres par titre, auteur ou collection. Le filtre status vaut all, owned (j’ai), read (j’ai lu) ou wishlist (je veux). category filtre Roman, Essai, Bande dessinée, Philosophie ou Autre. Lecture seule : rien n’est modifié, et aucune couverture n’est lue.",
+        "Cherche des livres par titre, auteur ou collection. Le filtre status vaut all, owned (j’ai), read (j’ai lu) ou wishlist (je veux). to_read à true garde les livres j’ai qui n’ont pas de fiche Terminé. category filtre Roman, Essai, Bande dessinée, Philosophie ou Autre. Lecture seule : rien n’est modifié, et aucune couverture n’est lue.",
       inputSchema: searchBooksInput,
       annotations: {
         readOnlyHint: true,

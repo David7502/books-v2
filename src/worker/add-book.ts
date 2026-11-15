@@ -15,10 +15,13 @@ import {
 
 const MAX_TEXT = 200;
 
+export const ADD_BOOK_OWNERSHIP_ERROR =
+  "« none » n'est pas accepté. Le lien doit être owned (j’ai) ou wishlist (je veux).";
+
 export const addBookInput = z.object({
   title: z.string().trim().min(1).max(MAX_TEXT),
   author: z.string().trim().min(1).max(MAX_TEXT),
-  ownership: z.enum(["owned", "wishlist", "none"]).optional(),
+  ownership: z.enum(["owned", "wishlist"], { error: ADD_BOOK_OWNERSHIP_ERROR }).optional(),
   read: z.boolean().optional(),
   category: z.enum(CATEGORIES).optional(),
   collection: z.string().trim().max(COLLECTION_MAX).optional(),
@@ -56,7 +59,7 @@ export async function addBook(db: D1Database, input: AddBookInput): Promise<AddB
   const parsed = validateCreateBook({
     title: input.title,
     author: input.author,
-    ownership: input.ownership ?? "none",
+    ownership: input.ownership ?? "wishlist",
     category: input.category ?? null,
     collection: input.collection ?? null,
     read: input.read ?? false,

@@ -157,7 +157,7 @@ function createBookServer(env: { DB: D1Database }) {
     {
       title: "Ajouter un livre",
       description:
-        "Ajoute un livre. title et author sont obligatoires, 200 caractères au plus. ownership vaut owned (j’ai), wishlist (je veux) ou none. Sans ownership, le livre n’a aucun de ces deux liens. read à true crée une fiche Terminé (j’ai lu). category vaut novel, essay, comic, philosophy ou other. collection est un texte libre, 80 caractères au plus. Si le même titre et le même auteur existent déjà, rien n’est inséré : le livre déjà là est renvoyé. Aucune couverture n’est écrite.",
+        "Ajoute un livre. title et author sont obligatoires, 200 caractères au plus. ownership vaut owned (j’ai) ou wishlist (je veux). Sans ownership, le livre est wishlist. « none » est refusé. read à true crée une fiche Terminé (j’ai lu). category vaut novel, essay, comic, philosophy ou other. collection est un texte libre, 80 caractères au plus. Si le même titre et le même auteur existent déjà, rien n’est inséré : le livre déjà là est renvoyé. Aucune couverture n’est écrite.",
       inputSchema: addBookInput,
       annotations: {
         readOnlyHint: false,

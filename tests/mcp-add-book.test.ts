@@ -200,6 +200,14 @@ const badOwnership = await payload(
 );
 assert.equal(badOwnership.result?.isError, true);
 
+const neither = await payload(
+  await call({ title: "Titre", author: "Ada", ownership: "none" }, jwt),
+);
+assert.equal(neither.result?.isError, true);
+assert.match(neither.result?.content?.[0]?.text ?? "", /none/);
+assert.match(neither.result?.content?.[0]?.text ?? "", /wishlist/);
+assert.equal(neither.result?.structuredContent, undefined);
+
 const badCategory = await payload(
   await call({ title: "Titre", author: "Ada", category: "Roman" }, jwt),
 );
@@ -266,6 +274,22 @@ assert.match(duplicate.result?.content?.[0]?.text ?? "", /Rien n'a été ajouté
 assert.equal(
   (db.sqlite.prepare("SELECT COUNT(*) AS total FROM books").get() as { total: number }).total,
   1,
+);
+
+const defaultLink = await payload(
+  await call({ title: "Le cahier", author: "Lina" }, jwt),
+);
+assert.equal(defaultLink.result?.structuredContent?.created, true);
+assert.equal(defaultLink.result?.structuredContent?.book?.ownership, "wishlist");
+assert.equal(defaultLink.result?.structuredContent?.book?.read, false);
+assert.match(defaultLink.result?.content?.[0]?.text ?? "", /je veux/);
+assert.equal(
+  (
+    db.sqlite
+      .prepare("SELECT ownership FROM books WHERE title = ?")
+      .get("Le cahier") as { ownership: string }
+  ).ownership,
+  "wishlist",
 );
 
 for (const sql of db.statements) {

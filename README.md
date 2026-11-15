@@ -212,7 +212,7 @@ Wrangler l'utilise pour `npm run dev` et `npm run preview`, et ne l'envoie pas l
 
 Aucune migration. Aucune commande `wrangler deploy`, `wrangler login` ou Access.
 
-Les outils MCP sont `ping`, `search_books` et `add_book`. La recherche est en lecture seule. `add_book` ajoute un livre avec le même contrôle que le formulaire : titre, auteur, j’ai, je veux, j’ai lu, catégorie et collection. Si le titre et l'auteur existent déjà, il ne crée pas de deuxième livre. Il n'envoie pas de couverture. Aucune migration nouvelle. Le guide est dans `docs/mcp.md`.
+Les outils MCP sont `ping`, `search_books` et `add_book`. La recherche est en lecture seule. `add_book` ajoute un livre : titre, auteur, j’ai ou je veux, j’ai lu, catégorie et collection. Sans lien précisé, c'est « je veux ». `none` est refusé. Si le titre et l'auteur existent déjà, il ne crée pas de deuxième livre. Il n'envoie pas de couverture. Aucune migration nouvelle. Le guide est dans `docs/mcp.md`.
 
 ## Secrets
 

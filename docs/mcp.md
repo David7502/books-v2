@@ -52,7 +52,7 @@ La réponse a un texte lisible et le même résultat en données structurées : 
 `add_book` écrit dans la même table que le site. Aucune nouvelle migration : les colonnes existent déjà.
 
 - `title` et `author` sont obligatoires, au plus 200 caractères. Les espaces autour sont enlevés.
-- `ownership` : `owned` (j'ai), `wishlist` (je veux) ou `none`. Sans cet argument, c'est `none`.
+- `ownership` : `owned` (j'ai) ou `wishlist` (je veux). Sans cet argument, c'est `wishlist`. `none` est refusé : ce n'est plus un choix.
 - `read` : `true` crée la fiche Terminé, comme la case **J’ai lu**. Sans cet argument, le livre n'a pas de fiche.
 - `category` : `novel`, `essay`, `comic`, `philosophy` ou `other`.
 - `collection` : texte libre, au plus 80 caractères. Un texte vide reste vide.
